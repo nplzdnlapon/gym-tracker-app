@@ -1,7 +1,7 @@
 {
-  "name": "PowerBuild Tracker",
-  "short_name": "PowerBuild",
-  "description": "Pelacak latihan powerbuilding, bodyweight, nutrisi, dan progres strength yang mobile-first dan bisa dipakai offline.",
+  "name": "Gym Tracker App by LapoN",
+  "short_name": "Gym Tracker",
+  "description": "Gym Tracker App by LapoN - pelacak latihan powerbuilding, bodyweight, nutrisi, dan progres strength yang mobile-first dan bisa dipakai offline.",
   "lang": "id",
   "dir": "ltr",
   "start_url": "./index.html",

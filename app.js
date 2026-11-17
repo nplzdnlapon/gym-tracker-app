@@ -18,74 +18,104 @@
     proteinTarget: 180
   });
 
-  const SPLITS = [
+  const DEFAULT_SPLITS = Object.freeze([
     {
       id: 1,
       day: "Day 1",
-      type: "Lower Body · Push",
-      name: "Squat + Bench Press + Quad Accessories",
-      description: "Fokus kekuatan squat dan bench press, lalu tutup dengan aksesori kuadrisep.",
-      tags: ["Squat", "Bench Press", "Quad Accessories"]
+      type: "Upper Body · Push",
+      name: "Push Day (Chest, Shoulder, Triceps)",
+      description: "Fokus gerakan dorong untuk dada, bahu, dan triceps.",
+      tags: ["Chest", "Shoulder", "Triceps"]
     },
     {
       id: 2,
       day: "Day 2",
-      type: "Posterior Chain · Pull",
-      name: "Deadlift + Hamstring + Pull Accessories",
-      description: "Deadlift sebagai lift utama, dilanjutkan hamstring dan pull accessories.",
-      tags: ["Deadlift", "Hamstring", "Pull Accessories"]
+      type: "Upper Body · Pull",
+      name: "Pull Day (Back, Rear Delt, Biceps)",
+      description: "Fokus gerakan tarik untuk punggung, bahu belakang, dan biceps.",
+      tags: ["Back", "Rear Delt", "Biceps"]
     },
     {
       id: 3,
       day: "Day 3",
-      type: "Active Recovery",
-      name: "Active Rest (K-Pop Dance / Skipping / Cardio)",
-      description: "Recovery aktif: pilih K-Pop Dance, skipping, atau cardio ringan 30–45 menit.",
-      tags: ["K-Pop Dance", "Skipping", "Cardio"]
+      type: "Lower Body · Legs",
+      name: "Leg Day (Quads, Hamstring, Glutes)",
+      description: "Latihan kaki menyeluruh untuk kuadrisep, hamstring, glutes, dan betis.",
+      tags: ["Quads", "Hamstring", "Glutes"]
     },
     {
       id: 4,
       day: "Day 4",
-      type: "Hypertrophy",
-      name: "Hypertrophy (Push + Pull + Arm)",
-      description: "Sesi volume untuk push, pull, dan lengan. Fokus pada kualitas repetisi.",
-      tags: ["Push", "Pull", "Arm"]
+      type: "Active Recovery",
+      name: "Active Recovery / Cardio",
+      description: "Pemulihan aktif dengan cardio ringan, jalan cepat, atau mobilitas.",
+      tags: ["Cardio", "Mobility", "Stretching"]
     },
     {
       id: 5,
       day: "Day 5",
-      type: "Powerlifting · SBD",
-      name: "SBD (Squat, Bench, Deadlift)",
-      description: "Squat, bench, dan deadlift dalam satu sesi. Kelola intensitas dengan baik.",
-      tags: ["Squat", "Bench Press", "Deadlift"]
+      type: "Upper Body",
+      name: "Upper Body (Strength & Hypertrophy)",
+      description: "Kombinasi compound dan isolasi tubuh bagian atas.",
+      tags: ["Chest", "Back", "Arms"]
     },
     {
       id: 6,
       day: "Day 6",
-      type: "Recovery",
-      name: "Total Rest",
-      description: "Istirahat total. Prioritaskan tidur, hidrasi, dan mobilitas ringan bila perlu.",
-      tags: ["Recovery", "Sleep", "Mobility"]
+      type: "Lower Body & Core",
+      name: "Lower Body + Core",
+      description: "Fokus kekuatan tubuh bagian bawah dan stabilitas otot inti (core).",
+      tags: ["Lower Body", "Glutes", "Core"]
     },
     {
       id: 7,
       day: "Day 7",
-      type: "Olympic Weightlifting",
-      name: "Weightlifting (Clean & Jerk / Snatch) or Hypertrophy",
-      description: "Sesi olimpi: Clean & Jerk atau Snatch, atau ganti dengan sesi hipertrofi.",
-      tags: ["Clean & Jerk", "Snatch", "Hypertrophy"]
+      type: "Recovery",
+      name: "Rest Day (Istirahat Total)",
+      description: "Istirahat penuh untuk pemulihan otot, tidur cukup, dan hidrasi.",
+      tags: ["Rest", "Recovery", "Sleep"]
     }
-  ];
+  ]);
 
-  const SPLIT_SELECT_LABELS = {
-    1: "Day 1 — Squat + Bench + Quads",
-    2: "Day 2 — Deadlift + Hamstring + Pull",
-    3: "Day 3 — Active Rest",
-    4: "Day 4 — Hypertrophy",
-    5: "Day 5 — SBD",
-    6: "Day 6 — Total Rest",
-    7: "Day 7 — Weightlifting / Hypertrophy"
-  };
+  const SPLIT_TEMPLATES = Object.freeze({
+    general_ppl: DEFAULT_SPLITS,
+    upper_lower: [
+      { id: 1, day: "Day 1", type: "Upper Body", name: "Upper Body A (Strength)", description: "Fokus compound dada, punggung, dan bahu.", tags: ["Chest", "Back", "Shoulder"] },
+      { id: 2, day: "Day 2", type: "Lower Body", name: "Lower Body A (Quads & Glutes)", description: "Fokus squat/leg press, quad, dan betis.", tags: ["Quads", "Glutes", "Calves"] },
+      { id: 3, day: "Day 3", type: "Active Recovery", name: "Cardio / Active Rest", description: "Cardio ringan dan peregangan.", tags: ["Cardio", "Mobility"] },
+      { id: 4, day: "Day 4", type: "Upper Body", name: "Upper Body B (Hypertrophy)", description: "Volume hipertrofi dada, punggung, dan lengan.", tags: ["Hypertrophy", "Arms", "Upper"] },
+      { id: 5, day: "Day 5", type: "Lower Body", name: "Lower Body B (Posterior Chain)", description: "Fokus deadlift/RDL, hamstring, glutes, dan core.", tags: ["Hamstring", "Glutes", "Core"] },
+      { id: 6, day: "Day 6", type: "Conditioning", name: "Cardio & Core Conditioning", description: "Sesi pembakaran kalori dan latihan perut.", tags: ["Cardio", "Abs", "Conditioning"] },
+      { id: 7, day: "Day 7", type: "Recovery", name: "Total Rest Day", description: "Istirahat penuh.", tags: ["Rest", "Sleep"] }
+    ],
+    bro_split: [
+      { id: 1, day: "Day 1", type: "Hypertrophy", name: "Chest Day", description: "Fokus penuh otot dada (upper, mid, lower chest).", tags: ["Chest", "Press", "Fly"] },
+      { id: 2, day: "Day 2", type: "Hypertrophy", name: "Back Day", description: "Fokus ketebalan dan kelebaran punggung.", tags: ["Lats", "Upper Back", "Row"] },
+      { id: 3, day: "Day 3", type: "Lower Body", name: "Leg Day", description: "Latihan kaki lengkap.", tags: ["Quads", "Hamstring", "Calves"] },
+      { id: 4, day: "Day 4", type: "Hypertrophy", name: "Shoulder & Traps", description: "Fokus front, side, dan rear deltoid.", tags: ["Shoulders", "Side Delt", "Rear Delt"] },
+      { id: 5, day: "Day 5", type: "Hypertrophy", name: "Arms & Abs (Biceps + Triceps)", description: "Fokus lengan dan otot perut.", tags: ["Biceps", "Triceps", "Abs"] },
+      { id: 6, day: "Day 6", type: "Active Recovery", name: "Cardio / Active Recovery", description: "Sesi cardio untuk kesehatan jantung dan fat loss.", tags: ["Cardio", "Recovery"] },
+      { id: 7, day: "Day 7", type: "Recovery", name: "Rest Day", description: "Istirahat total.", tags: ["Rest", "Recovery"] }
+    ],
+    full_body: [
+      { id: 1, day: "Day 1", type: "Full Body", name: "Full Body Workout A", description: "Latihan seluruh tubuh sesi A.", tags: ["Squat", "Push", "Pull"] },
+      { id: 2, day: "Day 2", type: "Active Recovery", name: "Cardio & Mobility", description: "Jalan cepat, sepeda, atau renang.", tags: ["Cardio", "Mobility"] },
+      { id: 3, day: "Day 3", type: "Full Body", name: "Full Body Workout B", description: "Latihan seluruh tubuh sesi B.", tags: ["Hinge", "Press", "Row"] },
+      { id: 4, day: "Day 4", type: "Recovery", name: "Rest / Stretching", description: "Pemulihan otot.", tags: ["Rest", "Stretching"] },
+      { id: 5, day: "Day 5", type: "Full Body", name: "Full Body Workout C", description: "Latihan seluruh tubuh sesi C + lengan.", tags: ["Legs", "Upper", "Arms"] },
+      { id: 6, day: "Day 6", type: "Conditioning", name: "Active Sport / Cardio", description: "Olahraga favorit atau cardio akhir pekan.", tags: ["Sport", "Cardio"] },
+      { id: 7, day: "Day 7", type: "Recovery", name: "Total Rest Day", description: "Istirahat penuh.", tags: ["Rest", "Sleep"] }
+    ],
+    powerbuilding: [
+      { id: 1, day: "Day 1", type: "Lower · Push", name: "Squat + Bench Press + Quad Accessories", description: "Fokus kekuatan squat dan bench press.", tags: ["Squat", "Bench Press", "Quads"] },
+      { id: 2, day: "Day 2", type: "Posterior · Pull", name: "Deadlift + Hamstring + Pull Accessories", description: "Deadlift utama dilanjutkan aksesori punggung.", tags: ["Deadlift", "Hamstring", "Pull"] },
+      { id: 3, day: "Day 3", type: "Active Recovery", name: "Active Rest & Cardio", description: "Recovery aktif dan cardio 30-45 menit.", tags: ["Cardio", "Skipping", "Dance"] },
+      { id: 4, day: "Day 4", type: "Hypertrophy", name: "Hypertrophy (Push + Pull + Arm)", description: "Sesi volume tubuh atas dan lengan.", tags: ["Push", "Pull", "Arms"] },
+      { id: 5, day: "Day 5", type: "Powerlifting", name: "SBD (Squat, Bench, Deadlift)", description: "Latihan tiga angkatan utama.", tags: ["Squat", "Bench Press", "Deadlift"] },
+      { id: 6, day: "Day 6", type: "Recovery", name: "Total Rest", description: "Istirahat penuh.", tags: ["Rest", "Sleep"] },
+      { id: 7, day: "Day 7", type: "Weightlifting / Hypertrophy", name: "Weightlifting (Clean & Jerk / Snatch) or Hypertrophy", description: "Sesi olimpi atau hipertrofi tambahan.", tags: ["Clean & Jerk", "Snatch", "Hypertrophy"] }
+    ]
+  });
 
   const QUICK_MEALS = Object.freeze([
     {
@@ -133,23 +163,34 @@
   ]);
 
   const PRESET_EXERCISES = Object.freeze([
-    "Squat",
     "Bench Press",
+    "Incline DB Press",
+    "Overhead Press",
+    "Lateral Raise",
+    "Tricep Pushdown",
+    "Lat Pulldown",
+    "Barbell Row",
+    "Seated Cable Row",
+    "T-Bar Row",
+    "Bicep Curl",
+    "Squat",
+    "Leg Press",
+    "Romanian Deadlift",
     "Conventional Deadlift",
     "Sumo Deadlift",
+    "Leg Extension",
+    "Leg Curl",
     "Clean & Jerk",
-    "Snatch",
-    "T-Bar Row",
-    "Overhead Press",
-    "Incline DB Press"
+    "Snatch"
   ]);
 
   const STRENGTH_EXERCISES = Object.freeze([
-    "Squat",
     "Bench Press",
+    "Squat",
     "Deadlift",
-    "Clean & Jerk",
-    "Snatch"
+    "Overhead Press",
+    "Lat Pulldown",
+    "Incline DB Press"
   ]);
 
   const BASELINE_PRS = Object.freeze({
@@ -166,17 +207,22 @@
   });
 
   const CARDIO_ACTIVITIES = Object.freeze([
-    "Swimming (Zone 2 / Interval)",
-    "K-Pop Dance",
     "Incline Treadmill Walk",
-    "Skipping"
+    "Running / Jogging",
+    "Stationary Bike (Sepeda Statis)",
+    "Swimming (Zone 2 / Interval)",
+    "Skipping",
+    "K-Pop Dance / Aerobik / HIIT"
   ]);
 
   const CARDIO_KCAL_PER_MIN = Object.freeze({
-    "Swimming (Zone 2 / Interval)": 9,
-    "K-Pop Dance": 7.5,
     "Incline Treadmill Walk": 6,
-    "Skipping": 11
+    "Running / Jogging": 10,
+    "Stationary Bike (Sepeda Statis)": 7.5,
+    "Swimming (Zone 2 / Interval)": 9,
+    "Skipping": 11,
+    "K-Pop Dance / Aerobik / HIIT": 8,
+    "K-Pop Dance": 7.5
   });
 
   const BODY_NOTE_TAGS = Object.freeze([
@@ -381,6 +427,85 @@
     return null;
   }
 
+  function cloneDefaultSplits() {
+    return DEFAULT_SPLITS.map((s) => ({
+      id: s.id,
+      day: s.day,
+      type: s.type,
+      name: s.name,
+      description: s.description,
+      tags: [...s.tags]
+    }));
+  }
+
+  function sanitizeCustomSplits(rawSplits) {
+    const defaults = cloneDefaultSplits();
+    if (!Array.isArray(rawSplits) || rawSplits.length === 0) return defaults;
+
+    const byId = new Map();
+    rawSplits.forEach((item) => {
+      if (!item || typeof item !== "object") return;
+      const id = Number(item.id);
+      if (!Number.isInteger(id) || id < 1 || id > 7) return;
+      const fallback = defaults[id - 1];
+      const name = typeof item.name === "string" && item.name.trim()
+        ? item.name.trim().slice(0, 70)
+        : fallback.name;
+      const type = typeof item.type === "string" && item.type.trim()
+        ? item.type.trim().slice(0, 40)
+        : fallback.type;
+      const description = typeof item.description === "string" && item.description.trim()
+        ? item.description.trim().slice(0, 140)
+        : fallback.description;
+      const tags = Array.isArray(item.tags)
+        ? item.tags.map((t) => String(t).trim()).filter((t) => t.length > 0 && t.length <= 32).slice(0, 8)
+        : fallback.tags;
+
+      byId.set(id, {
+        id,
+        day: `Day ${id}`,
+        type,
+        name,
+        description,
+        tags: tags.length > 0 ? tags : fallback.tags
+      });
+    });
+
+    return defaults.map((fallback) => byId.get(fallback.id) ?? fallback);
+  }
+
+  function cloneDefaultMeals() {
+    return QUICK_MEALS.map((m) => ({
+      id: m.id,
+      name: m.name,
+      calories: m.calories,
+      protein: m.protein
+    }));
+  }
+
+  function sanitizeCustomMeals(rawMeals) {
+    if (!Array.isArray(rawMeals)) return cloneDefaultMeals();
+    const seenIds = new Set();
+    const list = [];
+    rawMeals.forEach((item) => {
+      if (!item || typeof item !== "object") return;
+      const name = typeof item.name === "string" ? item.name.trim().slice(0, 80) : "";
+      const calories = validNumber(item.calories, 0, 20000);
+      const protein = validNumber(item.protein, 0, 1000);
+      if (!name || calories === null || protein === null) return;
+      let id = normalizeId(item.id);
+      while (seenIds.has(id)) id = uid();
+      seenIds.add(id);
+      list.push({
+        id,
+        name,
+        calories: Math.round(calories),
+        protein: round1(protein)
+      });
+    });
+    return list;
+  }
+
   function createDefaultState() {
     const now = new Date().toISOString();
     const today = todayKey();
@@ -398,6 +523,10 @@
       workoutLogs: [],
       cardioLogs: [],
       bodyNotes: [],
+      customSplits: cloneDefaultSplits(),
+      customExercises: [],
+      customCardioActivities: [],
+      customMeals: cloneDefaultMeals(),
       selectedSplits: { [today]: 1 },
       createdAt: now
     };
@@ -416,9 +545,9 @@
       throw new Error("Struktur data tidak dikenali.");
     }
 
-    const knownKeys = ["profile", "weights", "foodLogs", "workoutLogs", "cardioLogs", "bodyNotes", "selectedSplits"];
+    const knownKeys = ["profile", "weights", "foodLogs", "workoutLogs", "cardioLogs", "bodyNotes", "customSplits", "customExercises", "customMeals", "selectedSplits"];
     if (strict && !knownKeys.some((key) => key in source)) {
-      throw new Error("File JSON bukan backup PowerBuild Tracker.");
+      throw new Error("File JSON bukan backup Gym Tracker App by LapoN.");
     }
 
     const weightMap = new Map();
@@ -597,6 +726,36 @@
     }
     const bodyNotes = [...bodyNotesMap.values()].sort((a, b) => b.date.localeCompare(a.date));
 
+    const customSplits = sanitizeCustomSplits(source.customSplits);
+
+    const customExercisesSet = new Set();
+    const customExercises = [];
+    if (Array.isArray(source.customExercises)) {
+      source.customExercises.forEach((item) => {
+        const clean = typeof item === "string" ? item.trim().slice(0, 80) : "";
+        const norm = normalizeExerciseKey(clean);
+        if (!clean || customExercisesSet.has(norm)) return;
+        if (PRESET_EXERCISES.some((preset) => normalizeExerciseKey(preset) === norm)) return;
+        customExercisesSet.add(norm);
+        customExercises.push(clean);
+      });
+    }
+
+    const customCardioSet = new Set();
+    const customCardioActivities = [];
+    if (Array.isArray(source.customCardioActivities)) {
+      source.customCardioActivities.forEach((item) => {
+        const clean = typeof item === "string" ? item.trim().slice(0, 80) : "";
+        const norm = normalizeExerciseKey(clean);
+        if (!clean || customCardioSet.has(norm)) return;
+        if (CARDIO_ACTIVITIES.some((preset) => normalizeExerciseKey(preset) === norm)) return;
+        customCardioSet.add(norm);
+        customCardioActivities.push(clean);
+      });
+    }
+
+    const customMeals = sanitizeCustomMeals(source.customMeals);
+
     const selectedSplits = {};
     if (source.selectedSplits && typeof source.selectedSplits === "object") {
       Object.entries(source.selectedSplits).forEach(([key, value]) => {
@@ -616,6 +775,10 @@
       workoutLogs,
       cardioLogs,
       bodyNotes,
+      customSplits,
+      customExercises,
+      customCardioActivities,
+      customMeals,
       selectedSplits,
       createdAt: typeof source.createdAt === "string" ? source.createdAt : new Date().toISOString()
     };
@@ -750,8 +913,61 @@
     );
   }
 
+  function getActiveSplits() {
+    if (state && Array.isArray(state.customSplits) && state.customSplits.length === 7) {
+      return state.customSplits;
+    }
+    return DEFAULT_SPLITS;
+  }
+
   function getSplit(id) {
-    return SPLITS.find((split) => split.id === Number(id)) ?? null;
+    const splits = getActiveSplits();
+    return splits.find((split) => split.id === Number(id)) ?? splits[0] ?? null;
+  }
+
+  function getAllExercises() {
+    const custom = Array.isArray(state?.customExercises) ? state.customExercises : [];
+    const seen = new Set();
+    const list = [];
+    [...custom, ...PRESET_EXERCISES].forEach((name) => {
+      const clean = String(name || "").trim();
+      const norm = normalizeExerciseKey(clean);
+      if (!clean || seen.has(norm)) return;
+      seen.add(norm);
+      list.push(clean);
+    });
+    return list;
+  }
+
+  function getAllCardioActivities() {
+    const custom = Array.isArray(state?.customCardioActivities) ? state.customCardioActivities : [];
+    const seen = new Set();
+    const list = [];
+    [...custom, ...CARDIO_ACTIVITIES].forEach((name) => {
+      const clean = String(name || "").trim();
+      const norm = normalizeExerciseKey(clean);
+      if (!clean || seen.has(norm)) return;
+      seen.add(norm);
+      list.push(clean);
+    });
+    return list;
+  }
+
+  function getAnalyticsStrengthOptions() {
+    const loggedExercises = Array.isArray(state?.workoutLogs)
+      ? state.workoutLogs.map((l) => l.exercise)
+      : [];
+    const custom = Array.isArray(state?.customExercises) ? state.customExercises : [];
+    const seen = new Set();
+    const list = [];
+    [...loggedExercises, ...custom, ...STRENGTH_EXERCISES].forEach((name) => {
+      const clean = String(name || "").trim();
+      const norm = normalizeExerciseKey(clean);
+      if (!clean || seen.has(norm)) return;
+      seen.add(norm);
+      list.push(clean);
+    });
+    return list.length > 0 ? list : [...STRENGTH_EXERCISES];
   }
 
   function getSelectedSplitId() {
@@ -944,46 +1160,154 @@
   }
 
   function populateSplitSelect() {
-    const optionsMarkup = SPLITS
-      .map((split) => `<option value="${split.id}">${escapeHTML(SPLIT_SELECT_LABELS[split.id] ?? `${split.day} — ${split.name}`)}</option>`)
+    const splits = getActiveSplits();
+    const currentVal = els.splitSelect?.value;
+    const currentWorkoutVal = els.workoutSplitSelect?.value;
+    const optionsMarkup = splits
+      .map((split) => `<option value="${split.id}">${escapeHTML(`${split.day} — ${split.name}`)}</option>`)
       .join("");
-    els.splitSelect.innerHTML = optionsMarkup;
+    if (els.splitSelect) {
+      els.splitSelect.innerHTML = optionsMarkup;
+      if (currentVal) els.splitSelect.value = currentVal;
+    }
     if (els.workoutSplitSelect) {
       els.workoutSplitSelect.innerHTML = optionsMarkup;
+      if (currentWorkoutVal) els.workoutSplitSelect.value = currentWorkoutVal;
     }
   }
 
-  function renderQuickMeals() {
-    els.quickMealGrid.innerHTML = QUICK_MEALS
-      .map((meal, index) => {
-        const tone = index % 2 === 0
-          ? "bg-emerald-400/10 text-emerald-300 ring-emerald-400/15"
-          : "bg-blue-400/10 text-blue-300 ring-blue-400/15";
+  function populateExerciseSelect(preferredValue = "") {
+    if (!els.workoutExerciseSelect) return;
+    const previous = preferredValue || els.workoutExerciseSelect.value || "Bench Press";
+    const exercises = getAllExercises();
+    const customSet = new Set((state?.customExercises || []).map((c) => normalizeExerciseKey(c)));
 
-        return `
-          <button type="button" data-quick-meal-index="${index}" class="quick-add-btn group flex min-h-[6.8rem] flex-col justify-between rounded-2xl border border-white/5 bg-slate-950/30 p-3 text-left transition hover:border-emerald-400/25 hover:bg-emerald-400/[0.055] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60" aria-label="Tambahkan ${escapeHTML(meal.name)}: ${formatNumber(meal.calories)} kilokalori, ${formatMacro(meal.protein)} gram protein">
-            <span class="flex w-full items-start justify-between gap-2">
-              <span class="grid h-7 w-7 place-items-center rounded-lg ring-1 ring-inset ${tone}">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="h-3.5 w-3.5" aria-hidden="true">
-                  <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v8h5Z"/><path d="M21 15v7"/>
-                </svg>
-              </span>
-              <span class="quick-add-plus grid h-6 w-6 place-items-center rounded-full border border-white/10 bg-white/[0.035] text-slate-500 transition">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" class="h-3 w-3" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-              </span>
-            </span>
-            <span class="mt-2.5 block">
-              <span class="block text-[11px] font-semibold leading-snug text-white">+${escapeHTML(meal.name)}</span>
-              <span class="mt-1 flex flex-wrap items-center gap-x-1 text-[9px] font-medium leading-relaxed text-slate-500">
-                <span>${formatNumber(meal.calories)} kcal</span>
-                <span class="text-slate-700">·</span>
-                <span class="text-emerald-300/75">${formatMacro(meal.protein)} g protein</span>
-              </span>
-            </span>
-          </button>
-        `;
+    const optionsMarkup = exercises
+      .map((name) => {
+        const isUserCustom = customSet.has(normalizeExerciseKey(name));
+        const label = isUserCustom ? `★ ${name}` : name;
+        return `<option value="${escapeHTML(name)}">${escapeHTML(label)}</option>`;
       })
-      .join("");
+      .join("") + `<option value="__custom__">+ Tambah Jenis Latihan Baru...</option>`;
+
+    els.workoutExerciseSelect.innerHTML = optionsMarkup;
+    if (previous === "__custom__" || exercises.includes(previous)) {
+      els.workoutExerciseSelect.value = previous;
+    } else if (exercises.length > 0) {
+      els.workoutExerciseSelect.value = exercises[0];
+    }
+
+    if (els.customExercisesManage && els.customExercisesChips) {
+      const customList = state?.customExercises || [];
+      els.customExercisesManage.hidden = customList.length === 0;
+      els.customExercisesChips.innerHTML = customList
+        .map((name) => `
+          <span class="inline-flex items-center gap-1 rounded-lg border border-emerald-400/25 bg-emerald-400/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-200">
+            <span>${escapeHTML(name)}</span>
+            <button type="button" data-remove-custom-exercise="${escapeHTML(name)}" class="ml-0.5 text-emerald-300/70 hover:text-rose-300" title="Hapus dari daftar">&times;</button>
+          </span>
+        `)
+        .join("");
+    }
+  }
+
+  function populateCardioSelect(preferredValue = "") {
+    if (!els.cardioActivity) return;
+    const previous = preferredValue || els.cardioActivity.value || CARDIO_ACTIVITIES[0];
+    const activities = getAllCardioActivities();
+
+    els.cardioActivity.innerHTML = activities
+      .map((name) => `<option value="${escapeHTML(name)}">${escapeHTML(name)}</option>`)
+      .join("") + `<option value="__custom__">+ Tambah Aktivitas Cardio Baru...</option>`;
+
+    if (previous === "__custom__" || activities.includes(previous)) {
+      els.cardioActivity.value = previous;
+    } else if (activities.length > 0) {
+      els.cardioActivity.value = activities[0];
+    }
+  }
+
+  function populateSplitEditorForm(dayId) {
+    const id = Number(dayId || els.editSplitDay?.value || getSelectedSplitId());
+    const split = getSplit(id);
+    if (!split) return;
+    if (els.editSplitDay) els.editSplitDay.value = String(split.id);
+    if (els.editSplitName) els.editSplitName.value = split.name;
+    if (els.editSplitType) els.editSplitType.value = split.type;
+    if (els.editSplitTags) els.editSplitTags.value = (split.tags || []).join(", ");
+    if (els.editSplitDesc) els.editSplitDesc.value = split.description;
+  }
+
+  function getActiveMeals() {
+    if (state && Array.isArray(state.customMeals)) {
+      return state.customMeals;
+    }
+    return cloneDefaultMeals();
+  }
+
+  function renderQuickMeals() {
+    if (!els.quickMealGrid) return;
+    const meals = getActiveMeals();
+
+    if (meals.length === 0) {
+      els.quickMealGrid.innerHTML = `
+        <div class="col-span-2 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-4 text-center text-xs text-slate-400">
+          Belum ada template menu diet. Buka panel <strong>Kelola Menu</strong> di bawah untuk menambahkan menu andalan Anda.
+        </div>
+      `;
+    } else {
+      els.quickMealGrid.innerHTML = meals
+        .map((meal, index) => {
+          const tone = index % 2 === 0
+            ? "bg-emerald-400/10 text-emerald-300 ring-emerald-400/15"
+            : "bg-blue-400/10 text-blue-300 ring-blue-400/15";
+
+          return `
+            <button type="button" data-quick-meal-id="${escapeHTML(meal.id)}" class="quick-add-btn group flex min-h-[6.8rem] flex-col justify-between rounded-2xl border border-white/5 bg-slate-950/30 p-3 text-left transition hover:border-emerald-400/25 hover:bg-emerald-400/[0.055] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60" aria-label="Tambahkan ${escapeHTML(meal.name)}: ${formatNumber(meal.calories)} kilokalori, ${formatMacro(meal.protein)} gram protein">
+              <span class="flex w-full items-start justify-between gap-2">
+                <span class="grid h-7 w-7 place-items-center rounded-lg ring-1 ring-inset ${tone}">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="h-3.5 w-3.5" aria-hidden="true">
+                    <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v8h5Z"/><path d="M21 15v7"/>
+                  </svg>
+                </span>
+                <span class="quick-add-plus grid h-6 w-6 place-items-center rounded-full border border-white/10 bg-white/[0.035] text-slate-500 transition">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" class="h-3 w-3" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                </span>
+              </span>
+              <span class="mt-2.5 block">
+                <span class="block text-[11px] font-semibold leading-snug text-white">+${escapeHTML(meal.name)}</span>
+                <span class="mt-1 flex flex-wrap items-center gap-x-1 text-[9px] font-medium leading-relaxed text-slate-500">
+                  <span>${formatNumber(meal.calories)} kcal</span>
+                  <span class="text-slate-700">·</span>
+                  <span class="text-emerald-300/75">${formatMacro(meal.protein)} g protein</span>
+                </span>
+              </span>
+            </button>
+          `;
+        })
+        .join("");
+    }
+
+    if (els.mealTemplateManageList) {
+      if (meals.length === 0) {
+        els.mealTemplateManageList.innerHTML = `<p class="text-[11px] text-slate-500">Daftar template kosong.</p>`;
+      } else {
+        els.mealTemplateManageList.innerHTML = meals
+          .map((meal) => `
+            <div class="flex items-center justify-between gap-2 rounded-xl border border-white/5 bg-slate-900/60 px-3 py-2">
+              <div class="min-w-0 flex-1">
+                <p class="truncate text-xs font-semibold text-white">${escapeHTML(meal.name)}</p>
+                <p class="text-[10px] text-slate-400">${formatNumber(meal.calories)} kcal · <span class="text-emerald-300">${formatMacro(meal.protein)} g protein</span></p>
+              </div>
+              <div class="flex shrink-0 items-center gap-1.5">
+                <button type="button" data-edit-meal-template="${escapeHTML(meal.id)}" class="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white">Edit</button>
+                <button type="button" data-delete-meal-template="${escapeHTML(meal.id)}" class="rounded-lg border border-rose-400/20 bg-rose-400/10 px-2 py-1 text-[10px] font-semibold text-rose-200 transition hover:bg-rose-400/20">Hapus</button>
+              </div>
+            </div>
+          `)
+          .join("");
+      }
+    }
   }
 
   function renderWeightCard() {
@@ -1142,16 +1466,17 @@
   }
 
   function splitDetailMarkup(id) {
-    const split = getSplit(id) ?? SPLITS[0];
-    const isRest = split.id === 6;
-    const isActiveRest = split.id === 3;
+    const split = getSplit(id) ?? getActiveSplits()[0];
+    const typeLower = String(split.type || "").toLowerCase();
+    const isRest = typeLower.includes("rest") && !typeLower.includes("active");
+    const isActiveRest = typeLower.includes("active") || typeLower.includes("cardio") || typeLower.includes("conditioning");
     const iconTone = isRest
       ? "bg-slate-400/10 text-slate-300 ring-slate-400/20"
       : isActiveRest
         ? "bg-amber-400/10 text-amber-300 ring-amber-400/20"
         : "bg-emerald-400/10 text-emerald-300 ring-emerald-400/20";
 
-    const tags = split.tags
+    const tags = (split.tags || [])
       .map((tag) => `<span class="rounded-lg border border-white/5 bg-white/[0.045] px-2 py-1 text-[10px] font-medium text-slate-400">${escapeHTML(tag)}</span>`)
       .join("");
 
@@ -1171,8 +1496,9 @@
   }
 
   function renderSplit() {
+    populateSplitSelect();
     const splitId = getSelectedSplitId();
-    const split = getSplit(splitId) ?? SPLITS[0];
+    const split = getSplit(splitId) ?? getActiveSplits()[0];
     els.splitSelect.value = String(splitId);
     els.splitDayBadge.textContent = split.day;
     els.splitDetail.innerHTML = splitDetailMarkup(splitId);
@@ -1491,6 +1817,10 @@
   }
 
   function renderWorkout() {
+    populateSplitSelect();
+    populateExerciseSelect();
+    populateCardioSelect();
+
     const splitId = getSelectedSplitId();
     els.workoutTodayDay.textContent = getSplit(splitId)?.day ?? "Day 1";
     els.workoutToday.innerHTML = splitDetailMarkup(splitId);
@@ -1499,10 +1829,14 @@
       els.workoutSplitSelect.value = String(splitId);
     }
 
-    els.workoutSplitList.innerHTML = SPLITS
+    if (els.editSplitName && !els.editSplitName.value) {
+      populateSplitEditorForm(splitId);
+    }
+
+    els.workoutSplitList.innerHTML = getActiveSplits()
       .map((split) => {
         const isActive = split.id === splitId;
-        const tags = split.tags
+        const tags = (split.tags || [])
           .map((tag) => `<span class="rounded-md border border-white/5 bg-white/[0.04] px-1.5 py-0.5 text-[9px] font-medium text-slate-400">${escapeHTML(tag)}</span>`)
           .join("");
 
@@ -1515,12 +1849,15 @@
               <div class="min-w-0 flex-1">
                 <div class="flex items-start justify-between gap-2">
                   <div class="min-w-0">
-                    <p class="text-[10px] font-bold uppercase tracking-wider ${isActive ? "text-emerald-400" : "text-slate-500"}">${split.day}</p>
+                    <p class="text-[10px] font-bold uppercase tracking-wider ${isActive ? "text-emerald-400" : "text-slate-500"}">${split.day} · ${escapeHTML(split.type)}</p>
                     <h4 class="mt-0.5 text-xs font-semibold leading-snug text-white">${escapeHTML(split.name)}</h4>
                   </div>
-                  ${isActive
-                    ? `<span class="shrink-0 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-emerald-300">Aktif</span>`
-                    : `<button type="button" data-select-split="${split.id}" class="shrink-0 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-[10px] font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60">Pilih</button>`}
+                  <div class="flex shrink-0 items-center gap-1.5">
+                    <button type="button" data-edit-split="${split.id}" class="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white">Edit</button>
+                    ${isActive
+                      ? `<span class="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-emerald-300">Aktif</span>`
+                      : `<button type="button" data-select-split="${split.id}" class="rounded-lg border border-emerald-400/25 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-semibold text-emerald-200 transition hover:bg-emerald-400/20">Pilih</button>`}
+                  </div>
                 </div>
                 <p class="mt-1.5 text-[10px] leading-relaxed text-slate-500">${escapeHTML(split.description)}</p>
                 <div class="mt-2 flex flex-wrap gap-1">${tags}</div>
@@ -1549,16 +1886,19 @@
           </span>
           <div class="min-w-0">
             <p class="text-xs font-semibold text-slate-300">Belum ada log makanan</p>
-            <p class="mt-1 text-[10px] leading-relaxed text-slate-500">Gunakan Quick Add Meal Prep atau Custom Food Input di atas. Dashboard akan langsung diperbarui.</p>
+            <p class="mt-1 text-[10px] leading-relaxed text-slate-500">Gunakan Template Menu Diet (1-Tap) atau Input Makanan Manual di atas. Dashboard akan langsung diperbarui.</p>
           </div>
         </div>
       `;
       return;
     }
 
+    const templateNames = new Set(getActiveMeals().map((m) => normalizeExerciseKey(m.name)));
+
     els.foodList.innerHTML = logs
       .map((log) => {
         const time = formatTime(log.createdAt);
+        const alreadyInTemplate = templateNames.has(normalizeExerciseKey(log.name));
         return `
           <article class="flex items-center gap-3 rounded-2xl border border-white/5 bg-slate-950/30 p-3.5">
             <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-blue-400/10 text-blue-300 ring-1 ring-inset ring-blue-400/15">
@@ -1576,6 +1916,9 @@
                 <span class="font-medium text-emerald-300/80">${formatMacro(log.protein)} g protein</span>
               </div>
             </div>
+            ${!alreadyInTemplate
+              ? `<button type="button" data-save-log-template="${escapeHTML(log.id)}" class="shrink-0 rounded-lg border border-emerald-400/25 bg-emerald-400/10 px-2 py-1.5 text-[9px] font-bold text-emerald-300 transition hover:bg-emerald-400/20" title="Simpan ke Template Menu 1-Tap">+ Template</button>`
+              : ""}
             <button type="button" data-delete-food="${escapeHTML(log.id)}" class="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-slate-600 transition hover:bg-rose-400/10 hover:text-rose-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/60" aria-label="Hapus ${escapeHTML(log.name)}">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4" aria-hidden="true">
                 <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/>
@@ -1903,11 +2246,15 @@
         gradientId: "analytics"
       });
 
+    const analyticsOptions = getAnalyticsStrengthOptions();
+    if (!analyticsOptions.includes(strengthFilter)) {
+      strengthFilter = analyticsOptions[0];
+    }
     const strengthWeeks = getStrengthWeeklyData(strengthFilter);
     const strengthSummary = getStrengthSummary(strengthFilter);
     const strengthLogs = getStrengthLogsForFilter(strengthFilter);
     const latestStrength = strengthLogs[0] ?? null;
-    const exerciseOptions = STRENGTH_EXERCISES
+    const exerciseOptions = analyticsOptions
       .map((exercise) => `<option value="${escapeHTML(exercise)}"${exercise === strengthFilter ? " selected" : ""}>${escapeHTML(exercise)}</option>`)
       .join("");
 
@@ -2067,6 +2414,7 @@
   function renderAll() {
     renderDates();
     renderWeightCard();
+    renderQuickMeals();
     renderNutrition();
     renderSplit();
     renderWorkout();
@@ -2125,13 +2473,26 @@
 
     els.workoutTodayDay = document.getElementById("workout-today-day");
     els.workoutToday = document.getElementById("workout-today");
+    els.workoutSplitDetails = document.getElementById("workout-split-details");
     els.workoutSplitList = document.getElementById("workout-split-list");
+    els.splitTemplateSelect = document.getElementById("split-template-select");
+    els.applySplitTemplateBtn = document.getElementById("apply-split-template-btn");
+    els.splitEditorForm = document.getElementById("split-editor-form");
+    els.editSplitDay = document.getElementById("edit-split-day");
+    els.editSplitName = document.getElementById("edit-split-name");
+    els.editSplitType = document.getElementById("edit-split-type");
+    els.editSplitTags = document.getElementById("edit-split-tags");
+    els.editSplitDesc = document.getElementById("edit-split-desc");
+
     els.workoutPrCountBadge = document.getElementById("workout-pr-count-badge");
     els.workoutSplitSelect = document.getElementById("workout-split-select");
     els.workoutForm = document.getElementById("workout-form");
     els.workoutExerciseSelect = document.getElementById("workout-exercise-select");
     els.workoutExerciseCustomWrap = document.getElementById("workout-custom-exercise-wrap");
     els.workoutExerciseCustom = document.getElementById("workout-exercise-custom");
+    els.addCustomExerciseBtn = document.getElementById("add-custom-exercise-btn");
+    els.customExercisesManage = document.getElementById("custom-exercises-manage");
+    els.customExercisesChips = document.getElementById("custom-exercises-chips");
     els.workoutWeight = document.getElementById("workout-weight");
     els.workoutSets = document.getElementById("workout-sets");
     els.workoutReps = document.getElementById("workout-reps");
@@ -2146,6 +2507,9 @@
 
     els.cardioForm = document.getElementById("cardio-form");
     els.cardioActivity = document.getElementById("cardio-activity");
+    els.cardioCustomActivityWrap = document.getElementById("cardio-custom-activity-wrap");
+    els.cardioActivityCustom = document.getElementById("cardio-activity-custom");
+    els.addCustomCardioBtn = document.getElementById("add-custom-cardio-btn");
     els.cardioDuration = document.getElementById("cardio-duration");
     els.cardioCalories = document.getElementById("cardio-calories");
 
@@ -2167,10 +2531,22 @@
     els.dietProteinBar = document.getElementById("diet-protein-bar");
     els.dietProteinNote = document.getElementById("diet-protein-note");
     els.quickMealGrid = document.getElementById("quick-meal-grid");
+    els.mealTemplateDetails = document.getElementById("meal-template-details");
+    els.mealTemplateForm = document.getElementById("meal-template-form");
+    els.mealTemplateFormTitle = document.getElementById("meal-template-form-title");
+    els.mealTemplateCancelEdit = document.getElementById("meal-template-cancel-edit");
+    els.templateMealId = document.getElementById("template-meal-id");
+    els.templateMealName = document.getElementById("template-meal-name");
+    els.templateMealCalories = document.getElementById("template-meal-calories");
+    els.templateMealProtein = document.getElementById("template-meal-protein");
+    els.mealTemplateSubmitBtn = document.getElementById("meal-template-submit-btn");
+    els.resetMealTemplatesBtn = document.getElementById("reset-meal-templates-btn");
+    els.mealTemplateManageList = document.getElementById("meal-template-manage-list");
     els.foodForm = document.getElementById("food-form");
     els.foodName = document.getElementById("food-name");
     els.foodCalories = document.getElementById("food-calories");
     els.foodProtein = document.getElementById("food-protein");
+    els.foodSaveAsTemplate = document.getElementById("food-save-as-template");
     els.foodList = document.getElementById("food-list");
     els.dietLogCount = document.getElementById("diet-log-count");
 
@@ -2179,6 +2555,7 @@
     els.toast = document.getElementById("toast");
     els.toastMessage = document.getElementById("toast-message");
 
+    els.appShell = document.getElementById("app-shell");
     els.authGate = document.getElementById("auth-gate");
     els.authTitle = document.getElementById("auth-title");
     els.authSubtitle = document.getElementById("auth-subtitle");
@@ -2233,7 +2610,7 @@
       }
     }
 
-    document.title = `${TAB_TITLES[target]} · PowerBuild Tracker`;
+    document.title = `${TAB_TITLES[target]} · Gym Tracker App by LapoN`;
     if (target === "analytics") refreshAnalyticsChartsSoon();
     if (shouldScroll) window.scrollTo({ top: 0, behavior: "auto" });
   }
@@ -2334,6 +2711,7 @@
   }
 
   function refreshFoodViews() {
+    renderQuickMeals();
     renderNutrition();
     renderFoodList();
     renderAnalytics();
@@ -2361,15 +2739,128 @@
     return true;
   }
 
+  function upsertMealTemplate({ id, name, calories, protein }) {
+    const cleanName = typeof name === "string" ? name.trim().slice(0, 80) : "";
+    const validCalories = validNumber(calories, 0, 20000);
+    const validProtein = validNumber(protein, 0, 1000);
+    if (!cleanName || validCalories === null || validProtein === null) return null;
+
+    if (!Array.isArray(state.customMeals)) {
+      state.customMeals = cloneDefaultMeals();
+    }
+
+    const norm = normalizeExerciseKey(cleanName);
+    const existingIndex = id
+      ? state.customMeals.findIndex((m) => m.id === id)
+      : state.customMeals.findIndex((m) => normalizeExerciseKey(m.name) === norm);
+
+    const entry = {
+      id: existingIndex >= 0 ? state.customMeals[existingIndex].id : uid(),
+      name: cleanName,
+      calories: Math.round(validCalories),
+      protein: round1(validProtein)
+    };
+
+    if (existingIndex >= 0) {
+      state.customMeals[existingIndex] = entry;
+    } else {
+      state.customMeals.push(entry);
+    }
+
+    return entry;
+  }
+
+  function resetMealTemplateForm() {
+    if (els.templateMealId) els.templateMealId.value = "";
+    if (els.templateMealName) els.templateMealName.value = "";
+    if (els.templateMealCalories) els.templateMealCalories.value = "";
+    if (els.templateMealProtein) els.templateMealProtein.value = "";
+    if (els.mealTemplateFormTitle) els.mealTemplateFormTitle.textContent = "Tambah Template Menu Baru";
+    if (els.mealTemplateSubmitBtn) els.mealTemplateSubmitBtn.textContent = "+ Simpan ke Template Menu";
+    if (els.mealTemplateCancelEdit) els.mealTemplateCancelEdit.hidden = true;
+  }
+
+  function handleMealTemplateSubmit(event) {
+    event.preventDefault();
+    const editId = els.templateMealId?.value.trim() || "";
+    const name = els.templateMealName?.value.trim() || "";
+    const calories = validNumber(els.templateMealCalories?.value, 0, 20000);
+    const protein = validNumber(els.templateMealProtein?.value, 0, 1000);
+
+    if (!name) {
+      showToast("Nama template menu tidak boleh kosong.", "error");
+      els.templateMealName?.focus();
+      return;
+    }
+    if (calories === null || protein === null) {
+      showToast("Masukkan nilai kalori dan protein yang valid.", "error");
+      return;
+    }
+
+    const saved = upsertMealTemplate({ id: editId, name, calories, protein });
+    if (!saved) {
+      showToast("Gagal menyimpan template menu.", "error");
+      return;
+    }
+
+    persistState();
+    resetMealTemplateForm();
+    refreshFoodViews();
+    showToast(editId ? `Template "${saved.name}" diperbarui.` : `Menu "${saved.name}" ditambahkan ke Template 1-Tap.`);
+  }
+
+  function handleMealTemplateManageClick(event) {
+    const editBtn = event.target.closest("[data-edit-meal-template]");
+    if (editBtn) {
+      const id = editBtn.dataset.editMealTemplate;
+      const meal = getActiveMeals().find((m) => m.id === id);
+      if (!meal) return;
+
+      if (els.templateMealId) els.templateMealId.value = meal.id;
+      if (els.templateMealName) els.templateMealName.value = meal.name;
+      if (els.templateMealCalories) els.templateMealCalories.value = String(meal.calories);
+      if (els.templateMealProtein) els.templateMealProtein.value = String(meal.protein);
+      if (els.mealTemplateFormTitle) els.mealTemplateFormTitle.textContent = "Edit Template Menu";
+      if (els.mealTemplateSubmitBtn) els.mealTemplateSubmitBtn.textContent = "Simpan Perubahan Template";
+      if (els.mealTemplateCancelEdit) els.mealTemplateCancelEdit.hidden = false;
+      els.templateMealName?.focus();
+      return;
+    }
+
+    const deleteBtn = event.target.closest("[data-delete-meal-template]");
+    if (deleteBtn) {
+      const id = deleteBtn.dataset.deleteMealTemplate;
+      const meal = getActiveMeals().find((m) => m.id === id);
+      if (!meal) return;
+      if (!window.confirm(`Hapus "${meal.name}" dari daftar Template Menu Anda?`)) return;
+
+      state.customMeals = getActiveMeals().filter((m) => m.id !== id);
+      if (els.templateMealId?.value === id) resetMealTemplateForm();
+      persistState();
+      refreshFoodViews();
+      showToast(`Template "${meal.name}" dihapus.`);
+    }
+  }
+
+  function handleResetMealTemplates() {
+    if (!window.confirm("Kembalikan daftar Template Menu ke menu default?")) return;
+    state.customMeals = cloneDefaultMeals();
+    resetMealTemplateForm();
+    persistState();
+    refreshFoodViews();
+    showToast("Template Menu dikembalikan ke default.");
+  }
+
   function handleQuickMealClick(event) {
-    const button = event.target.closest("[data-quick-meal-index]");
+    const button = event.target.closest("[data-quick-meal-id]");
     if (!button) return;
 
-    const meal = QUICK_MEALS[Number(button.dataset.quickMealIndex)];
+    const mealId = button.dataset.quickMealId;
+    const meal = getActiveMeals().find((m) => m.id === mealId);
     if (!meal) return;
 
     if (!addFoodEntry(meal)) {
-      showToast("Gagal menambahkan meal prep.", "error");
+      showToast("Gagal menambahkan menu.", "error");
       return;
     }
 
@@ -2383,6 +2874,7 @@
     const name = els.foodName.value.trim();
     const calories = validNumber(els.foodCalories.value, 0, 20000);
     const protein = validNumber(els.foodProtein.value, 0, 1000);
+    const saveAsTemplate = Boolean(els.foodSaveAsTemplate?.checked);
 
     if (!name) {
       showToast("Nama makanan tidak boleh kosong.", "error");
@@ -2394,6 +2886,10 @@
       return;
     }
 
+    if (saveAsTemplate) {
+      upsertMealTemplate({ name, calories, protein });
+    }
+
     if (!addFoodEntry({ name, calories, protein })) {
       showToast("Gagal menambahkan makanan.", "error");
       return;
@@ -2401,10 +2897,30 @@
 
     els.foodForm.reset();
     els.foodName.focus();
-    showToast("Makanan custom ditambahkan ke log hari ini.");
+    showToast(
+      saveAsTemplate
+        ? `"${name}" masuk log hari ini & disimpan ke Template 1-Tap.`
+        : "Makanan ditambahkan ke log hari ini."
+    );
   }
 
   function handleFoodDelete(event) {
+    const saveTemplateBtn = event.target.closest("[data-save-log-template]");
+    if (saveTemplateBtn) {
+      const logId = saveTemplateBtn.dataset.saveLogTemplate;
+      const log = state.foodLogs.find((item) => item.id === logId);
+      if (!log) return;
+      upsertMealTemplate({
+        name: log.name,
+        calories: log.calories,
+        protein: log.protein
+      });
+      persistState();
+      refreshFoodViews();
+      showToast(`"${log.name}" disimpan ke Template Menu (1-Tap).`);
+      return;
+    }
+
     const button = event.target.closest("[data-delete-food]");
     if (!button) return;
 
@@ -2420,6 +2936,119 @@
     showToast("Log makanan dihapus.");
   }
 
+  function handleSplitTemplateApply() {
+    const templateKey = els.splitTemplateSelect?.value || "general_ppl";
+    const template = SPLIT_TEMPLATES[templateKey];
+    if (!template) return;
+
+    state.customSplits = sanitizeCustomSplits(template);
+    persistState();
+    populateSplitEditorForm(els.editSplitDay?.value || getSelectedSplitId());
+    renderSplit();
+    renderWorkout();
+    showToast("Template split latihan berhasil diterapkan ke akun Anda.");
+  }
+
+  function handleSplitEditorSubmit(event) {
+    event.preventDefault();
+    const dayId = Number(els.editSplitDay?.value) || 1;
+    const name = els.editSplitName?.value.trim().slice(0, 70) || "";
+    const type = els.editSplitType?.value.trim().slice(0, 40) || "General";
+    const desc = els.editSplitDesc?.value.trim().slice(0, 140) || "Sesi latihan kustom.";
+    const rawTags = els.editSplitTags?.value || "";
+    const tags = rawTags
+      .split(",")
+      .map((t) => t.trim().slice(0, 32))
+      .filter(Boolean)
+      .slice(0, 8);
+
+    if (!name) {
+      showToast("Nama sesi latihan tidak boleh kosong.", "error");
+      els.editSplitName?.focus();
+      return;
+    }
+
+    if (!Array.isArray(state.customSplits) || state.customSplits.length !== 7) {
+      state.customSplits = cloneDefaultSplits();
+    }
+
+    const index = state.customSplits.findIndex((s) => s.id === dayId);
+    const updatedSplit = {
+      id: dayId,
+      day: `Day ${dayId}`,
+      type,
+      name,
+      description: desc,
+      tags: tags.length > 0 ? tags : ["Workout"]
+    };
+
+    if (index >= 0) {
+      state.customSplits[index] = updatedSplit;
+    } else {
+      state.customSplits.push(updatedSplit);
+      state.customSplits = sanitizeCustomSplits(state.customSplits);
+    }
+
+    persistState();
+    renderSplit();
+    renderWorkout();
+    showToast(`Split Day ${dayId} (${name}) berhasil disimpan.`);
+  }
+
+  function addCustomExerciseToAccount(rawName) {
+    const clean = String(rawName || "").trim().slice(0, 80);
+    if (!clean) return "";
+
+    if (!Array.isArray(state.customExercises)) {
+      state.customExercises = [];
+    }
+
+    const norm = normalizeExerciseKey(clean);
+    const allExisting = getAllExercises();
+    const existingMatch = allExisting.find((item) => normalizeExerciseKey(item) === norm);
+
+    if (existingMatch) {
+      return existingMatch;
+    }
+
+    state.customExercises.unshift(clean);
+    return clean;
+  }
+
+  function handleAddCustomExerciseClick() {
+    const rawName = els.workoutExerciseCustom?.value.trim() || "";
+    if (!rawName) {
+      showToast("Ketik nama jenis latihan baru terlebih dahulu.", "error");
+      els.workoutExerciseCustom?.focus();
+      return;
+    }
+
+    const savedName = addCustomExerciseToAccount(rawName);
+    persistState();
+    if (els.workoutExerciseCustom) els.workoutExerciseCustom.value = "";
+    if (els.workoutCustomExerciseWrap) els.workoutCustomExerciseWrap.hidden = true;
+    populateExerciseSelect(savedName);
+    updateWorkoutLive1RM();
+    renderAnalytics();
+    showToast(`Jenis latihan "${savedName}" ditambahkan ke daftar akun Anda.`);
+  }
+
+  function handleRemoveCustomExerciseClick(event) {
+    const btn = event.target.closest("[data-remove-custom-exercise]");
+    if (!btn) return;
+    const name = btn.dataset.removeCustomExercise;
+    if (!name || !Array.isArray(state.customExercises)) return;
+
+    state.customExercises = state.customExercises.filter(
+      (item) => normalizeExerciseKey(item) !== normalizeExerciseKey(name)
+    );
+    persistState();
+    populateExerciseSelect();
+    updateWorkoutLive1RM();
+    renderAnalytics();
+    showToast(`"${name}" dihapus dari daftar latihan tambahan.`);
+  }
+
   function handleExerciseSelectChange() {
     if (!els.workoutExerciseSelect || !els.workoutCustomExerciseWrap) return;
     const isCustom = els.workoutExerciseSelect.value === "__custom__";
@@ -2428,6 +3057,56 @@
       els.workoutExerciseCustom?.focus();
     }
     updateWorkoutLive1RM();
+  }
+
+  function handleCardioSelectChange() {
+    if (!els.cardioActivity) return;
+    const isCustom = els.cardioActivity.value === "__custom__";
+    if (els.cardioCustomActivityWrap) {
+      els.cardioCustomActivityWrap.hidden = !isCustom;
+    }
+    if (isCustom) {
+      els.cardioActivityCustom?.focus();
+    } else {
+      updateCardioAutoCalories();
+    }
+  }
+
+  function addCustomCardioToAccount(rawName) {
+    const clean = String(rawName || "").trim().slice(0, 80);
+    if (!clean) return "";
+
+    if (!Array.isArray(state.customCardioActivities)) {
+      state.customCardioActivities = [];
+    }
+
+    const norm = normalizeExerciseKey(clean);
+    const allExisting = getAllCardioActivities();
+    const existingMatch = allExisting.find((item) => normalizeExerciseKey(item) === norm);
+
+    if (existingMatch) {
+      return existingMatch;
+    }
+
+    state.customCardioActivities.unshift(clean);
+    return clean;
+  }
+
+  function handleAddCustomCardioClick() {
+    const rawName = els.cardioActivityCustom?.value.trim() || "";
+    if (!rawName) {
+      showToast("Ketik nama aktivitas cardio baru terlebih dahulu.", "error");
+      els.cardioActivityCustom?.focus();
+      return;
+    }
+
+    const savedName = addCustomCardioToAccount(rawName);
+    persistState();
+    if (els.cardioActivityCustom) els.cardioActivityCustom.value = "";
+    if (els.cardioCustomActivityWrap) els.cardioCustomActivityWrap.hidden = true;
+    populateCardioSelect(savedName);
+    updateCardioAutoCalories();
+    showToast(`Aktivitas "${savedName}" ditambahkan ke daftar cardio Anda.`);
   }
 
   function syncPendingBodyNoteText() {
@@ -2456,15 +3135,17 @@
     event.preventDefault();
     const splitId = Number(els.workoutSplitSelect?.value) || getSelectedSplitId();
     const isCustom = els.workoutExerciseSelect?.value === "__custom__";
-    const exercise = (isCustom ? els.workoutExerciseCustom?.value : els.workoutExerciseSelect?.value || "")
+    const rawExercise = (isCustom ? els.workoutExerciseCustom?.value : els.workoutExerciseSelect?.value || "")
       .trim()
       .slice(0, 80);
 
-    if (!exercise) {
+    if (!rawExercise) {
       showToast("Pilih atau ketik nama gerakan terlebih dahulu.", "error");
       if (isCustom) els.workoutExerciseCustom?.focus();
       return;
     }
+
+    const exercise = isCustom ? addCustomExerciseToAccount(rawExercise) : rawExercise;
 
     const weight = validNumber(els.workoutWeight?.value, 0.5, 600);
     const sets = validNumber(els.workoutSets?.value, 1, 30);
@@ -2510,8 +3191,10 @@
 
     persistState();
     els.workoutWeight.value = "";
-    if (isCustom && els.workoutExerciseCustom) {
-      els.workoutExerciseCustom.value = "";
+    if (isCustom) {
+      if (els.workoutExerciseCustom) els.workoutExerciseCustom.value = "";
+      if (els.workoutCustomExerciseWrap) els.workoutCustomExerciseWrap.hidden = true;
+      populateExerciseSelect(exercise);
     }
     renderSplit();
     renderWorkout();
@@ -2527,7 +3210,18 @@
 
   function handleCardioSubmit(event) {
     event.preventDefault();
-    const activity = (els.cardioActivity?.value || CARDIO_ACTIVITIES[0]).trim().slice(0, 80);
+    const isCustom = els.cardioActivity?.value === "__custom__";
+    const rawActivity = (isCustom ? els.cardioActivityCustom?.value : els.cardioActivity?.value || CARDIO_ACTIVITIES[0])
+      .trim()
+      .slice(0, 80);
+
+    if (!rawActivity) {
+      showToast("Pilih atau ketik nama aktivitas cardio terlebih dahulu.", "error");
+      if (isCustom) els.cardioActivityCustom?.focus();
+      return;
+    }
+
+    const activity = isCustom ? addCustomCardioToAccount(rawActivity) : rawActivity;
     const duration = validNumber(els.cardioDuration?.value, 1, 600);
     const calories = validNumber(els.cardioCalories?.value, 1, 5000);
 
@@ -2556,6 +3250,11 @@
     cardioCaloriesManual = false;
     els.cardioDuration.value = "";
     els.cardioCalories.value = "";
+    if (isCustom) {
+      if (els.cardioActivityCustom) els.cardioActivityCustom.value = "";
+      if (els.cardioCustomActivityWrap) els.cardioCustomActivityWrap.hidden = true;
+      populateCardioSelect(activity);
+    }
 
     persistState();
     renderWorkout();
@@ -2695,7 +3394,7 @@
   function exportData() {
     try {
       const payload = {
-        app: "PowerBuild Tracker",
+        app: "Gym Tracker App by LapoN",
         version: STATE_VERSION,
         exportedAt: new Date().toISOString(),
         data: state
@@ -2704,7 +3403,7 @@
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `powerbuild-backup-${todayKey()}.json`;
+      link.download = `gym-tracker-lapon-backup-${todayKey()}.json`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -2800,7 +3499,7 @@
 
     const isRegister = authMode === "register";
     if (els.authTitle) {
-      els.authTitle.textContent = isRegister ? "Daftar Akun Baru" : "Masuk ke PowerBuild";
+      els.authTitle.textContent = isRegister ? "Daftar · Gym Tracker App by LapoN" : "Gym Tracker App by LapoN";
     }
     if (els.authSubtitle) {
       els.authSubtitle.textContent = isRegister
@@ -2814,7 +3513,7 @@
     }
     if (els.authTogglePrompt) {
       els.authTogglePrompt.textContent = isRegister
-        ? "Sudah punya akun PowerBuild?"
+        ? "Sudah punya akun Gym Tracker App by LapoN?"
         : "Belum punya akun?";
     }
     if (els.authToggleBtn) {
@@ -2847,13 +3546,20 @@
   function showAuthGate() {
     if (!els.authGate) return;
     els.authGate.hidden = false;
+    if (els.appShell) els.appShell.hidden = true;
     document.body.classList.add("auth-locked");
+    document.title = "Login · Gym Tracker App by LapoN";
   }
 
   function hideAuthGate() {
     if (!els.authGate) return;
     els.authGate.hidden = true;
+    if (els.appShell) els.appShell.hidden = false;
     document.body.classList.remove("auth-locked");
+    const activeNav = els.navButtons.find((btn) => btn.classList.contains("active"));
+    const tab = activeNav?.dataset.tabTarget || "dashboard";
+    document.title = `${TAB_TITLES[tab] || "Dashboard"} · Gym Tracker App by LapoN`;
+    if (tab === "analytics") refreshAnalyticsChartsSoon();
   }
 
   async function loadUserDataFromCloud(user) {
@@ -3118,20 +3824,35 @@
     els.splitSelect.addEventListener("change", (event) => applySplit(event.target.value));
 
     els.workoutSplitList.addEventListener("click", (event) => {
+      const editBtn = event.target.closest("[data-edit-split]");
+      if (editBtn) {
+        const dayId = Number(editBtn.dataset.editSplit);
+        populateSplitEditorForm(dayId);
+        if (els.workoutSplitDetails) els.workoutSplitDetails.open = true;
+        els.editSplitName?.focus();
+        return;
+      }
       const button = event.target.closest("[data-select-split]");
       if (!button) return;
       applySplit(button.dataset.selectSplit);
     });
 
+    els.applySplitTemplateBtn?.addEventListener("click", handleSplitTemplateApply);
+    els.editSplitDay?.addEventListener("change", (event) => populateSplitEditorForm(event.target.value));
+    els.splitEditorForm?.addEventListener("submit", handleSplitEditorSubmit);
+
     els.workoutSplitSelect?.addEventListener("change", (event) => applySplit(event.target.value));
     els.workoutExerciseSelect?.addEventListener("change", handleExerciseSelectChange);
     els.workoutExerciseCustom?.addEventListener("input", updateWorkoutLive1RM);
+    els.addCustomExerciseBtn?.addEventListener("click", handleAddCustomExerciseClick);
+    els.customExercisesChips?.addEventListener("click", handleRemoveCustomExerciseClick);
     els.workoutWeight?.addEventListener("input", updateWorkoutLive1RM);
     els.workoutSets?.addEventListener("input", updateWorkoutLive1RM);
     els.workoutReps?.addEventListener("input", updateWorkoutLive1RM);
     els.workoutForm?.addEventListener("submit", handleWorkoutSubmit);
 
-    els.cardioActivity?.addEventListener("change", updateCardioAutoCalories);
+    els.cardioActivity?.addEventListener("change", handleCardioSelectChange);
+    els.addCustomCardioBtn?.addEventListener("click", handleAddCustomCardioClick);
     els.cardioDuration?.addEventListener("input", updateCardioAutoCalories);
     els.cardioCalories?.addEventListener("input", () => {
       cardioCaloriesManual = Boolean(els.cardioCalories.value.trim());
@@ -3145,13 +3866,18 @@
 
     els.analyticsContent.addEventListener("change", (event) => {
       if (event.target.id !== "strength-filter") return;
-      strengthFilter = STRENGTH_EXERCISES.includes(event.target.value)
+      const options = getAnalyticsStrengthOptions();
+      strengthFilter = options.includes(event.target.value)
         ? event.target.value
-        : STRENGTH_EXERCISES[0];
+        : options[0];
       renderAnalytics();
     });
 
     els.quickMealGrid.addEventListener("click", handleQuickMealClick);
+    els.mealTemplateForm?.addEventListener("submit", handleMealTemplateSubmit);
+    els.mealTemplateCancelEdit?.addEventListener("click", resetMealTemplateForm);
+    els.mealTemplateManageList?.addEventListener("click", handleMealTemplateManageClick);
+    els.resetMealTemplatesBtn?.addEventListener("click", handleResetMealTemplates);
     els.foodForm.addEventListener("submit", handleFoodSubmit);
     els.foodList.addEventListener("click", handleFoodDelete);
 
@@ -3199,9 +3925,12 @@
     if (!("serviceWorker" in navigator) || window.location.protocol === "file:") return;
 
     const register = () => {
-      navigator.serviceWorker.register("./sw.js").catch((error) => {
-        console.warn("Service Worker tidak dapat didaftarkan:", error);
-      });
+      navigator.serviceWorker
+        .register("./sw.js")
+        .then((reg) => reg.update().catch(() => {}))
+        .catch((error) => {
+          console.warn("Service Worker tidak dapat didaftarkan:", error);
+        });
     };
 
     if (document.readyState === "complete") {

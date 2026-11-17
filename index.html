@@ -7,15 +7,15 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="PowerBuild">
-  <meta name="description" content="PowerBuild Tracker - pelacak latihan powerbuilding dan program fat loss, dibuat mobile-first.">
-  <title>PowerBuild Tracker</title>
+  <meta name="apple-mobile-web-app-title" content="Gym Tracker App by LapoN">
+  <meta name="description" content="Gym Tracker App by LapoN - pelacak latihan powerbuilding dan program fat loss, dibuat mobile-first.">
+  <title>Gym Tracker App by LapoN</title>
 
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230f172a'/%3E%3Cpath d='M20 25v14M15 29v6M44 25v14M49 29v6M20 32h24' stroke='%2334d399' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
-  <meta name="application-name" content="PowerBuild Tracker">
-  <meta name="apple-mobile-web-app-title" content="PowerBuild">
+  <meta name="application-name" content="Gym Tracker App by LapoN">
+  <meta name="apple-mobile-web-app-title" content="Gym Tracker App by LapoN">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
@@ -38,10 +38,66 @@
       }
     };
   </script>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=2.2">
 </head>
 
-<body>
+<body class="auth-locked">
+  <!-- HALAMAN UTAMA LOGIN & REGISTER (AUTH GATE) -->
+  <section id="auth-gate" class="auth-gate" role="region" aria-labelledby="auth-title">
+    <div class="auth-card glass-card relative w-full max-w-md p-6 sm:p-8">
+      <div class="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-emerald-400/15 blur-3xl"></div>
+      <div class="pointer-events-none absolute -bottom-16 -left-16 h-44 w-44 rounded-full bg-cyan-400/10 blur-3xl"></div>
+
+      <div class="relative flex items-center gap-3.5">
+        <div class="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-emerald-400 to-cyan-400 text-slate-950 shadow-lg shadow-emerald-500/25">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" class="h-6 w-6" aria-hidden="true">
+            <path d="m6.5 6.5 11 11M3 10l7-7M14 21l7-7M3 14l3-3M18 22l4-4M2 6l4-4"/>
+          </svg>
+        </div>
+        <div>
+          <span id="auth-mode-badge" class="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-emerald-300">
+            By LapoN · Cloud Sync
+          </span>
+          <h2 id="auth-title" class="mt-1 text-xl font-bold tracking-tight text-white">Gym Tracker App by LapoN</h2>
+        </div>
+      </div>
+
+      <p id="auth-subtitle" class="relative mt-2.5 text-xs leading-relaxed text-slate-400">
+        Silakan masuk terlebih dahulu menggunakan email dan password Anda untuk membuka dashboard dan menyinkronkan data latihan ke cloud.
+      </p>
+
+      <div id="auth-feedback" class="auth-feedback mt-4" role="alert" hidden></div>
+
+      <form id="auth-form" class="relative mt-4 space-y-4" novalidate>
+        <div>
+          <label for="auth-email" class="mb-1.5 block text-xs font-semibold text-slate-300">Email</label>
+          <input id="auth-email" name="email" type="email" inputmode="email" autocomplete="email" required placeholder="nama@email.com" class="field">
+        </div>
+
+        <div>
+          <div class="mb-1.5 flex items-center justify-between">
+            <label for="auth-password" class="text-xs font-semibold text-slate-300">Password</label>
+            <span class="text-[10px] text-slate-500">Min. 6 karakter</span>
+          </div>
+          <input id="auth-password" name="password" type="password" autocomplete="current-password" minlength="6" required placeholder="••••••••" class="field">
+        </div>
+
+        <button id="auth-submit-btn" type="submit" class="btn-primary flex w-full items-center justify-center gap-2 py-3.5 text-sm">
+          <span id="auth-submit-label">Masuk (Login)</span>
+        </button>
+      </form>
+
+      <div class="relative mt-5 border-t border-white/10 pt-4 text-center">
+        <p id="auth-toggle-prompt" class="text-xs text-slate-400">Belum punya akun?</p>
+        <button id="auth-toggle-btn" type="button" class="btn-secondary mt-2.5 w-full py-2.5 text-xs font-bold text-emerald-300 hover:text-emerald-200">
+          Daftar Akun Baru (Register)
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- MAIN APPLICATION SHELL (Hanya tampil setelah user Login) -->
+  <div id="app-shell" hidden>
   <header class="sticky top-0 z-30 border-b border-white/5 bg-slate-900/75 backdrop-blur-xl">
     <div class="app-header-inner mx-auto flex w-full max-w-2xl items-center justify-between px-4 pb-3 sm:px-6">
       <div class="flex items-center gap-3">
@@ -51,8 +107,8 @@
           </svg>
         </div>
         <div>
-          <p class="text-[10px] font-bold uppercase tracking-[0.28em] text-emerald-400">PowerBuild</p>
-          <h1 class="text-sm font-semibold tracking-tight text-white">Fat Loss Tracker</h1>
+          <p class="text-[10px] font-bold uppercase tracking-[0.28em] text-emerald-400">by LapoN</p>
+          <h1 class="text-sm font-semibold tracking-tight text-white">Gym Tracker App</h1>
         </div>
       </div>
       <button id="open-settings" type="button" class="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/5 text-slate-300 transition hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60" aria-label="Buka pengaturan dan backup data" aria-haspopup="dialog" aria-expanded="false">
@@ -272,7 +328,7 @@
         </span>
       </div>
 
-      <!-- TODAY'S FOCUS & 7-DAY SPLIT -->
+      <!-- TODAY'S FOCUS & CUSTOMIZABLE SPLIT -->
       <article class="glass-card relative p-5 sm:p-6">
         <div class="pointer-events-none absolute -left-10 -top-14 h-36 w-36 rounded-full bg-violet-400/10 blur-3xl"></div>
         <div class="relative flex items-center justify-between gap-3">
@@ -284,20 +340,91 @@
             </span>
             <div>
               <p class="text-[10px] font-bold uppercase tracking-widest text-emerald-400">Sesi hari ini</p>
-              <h3 class="text-sm font-semibold text-white">Fokus latihan</h3>
+              <h3 class="text-sm font-semibold text-white">Fokus &amp; Jadwal Split</h3>
             </div>
           </div>
           <span id="workout-today-day" class="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-bold text-emerald-200">Day 1</span>
         </div>
         <div id="workout-today" class="relative mt-4"></div>
 
-        <details class="group mt-4 rounded-2xl border border-white/5 bg-slate-950/35">
+        <details id="workout-split-details" class="group mt-4 rounded-2xl border border-white/5 bg-slate-950/35">
           <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-xs font-semibold text-slate-300 transition hover:text-white">
-            <span>Lihat &amp; Ganti Rotasi 7-Day Split</span>
-            <span class="text-[10px] font-medium text-emerald-400 group-open:hidden">Buka</span>
+            <span>Atur &amp; Kustomisasi Split Latihan Akun</span>
+            <span class="text-[10px] font-medium text-emerald-400 group-open:hidden">Buka &amp; Edit</span>
             <span class="hidden text-[10px] font-medium text-slate-400 group-open:inline">Tutup</span>
           </summary>
-          <div id="workout-split-list" class="space-y-2.5 border-t border-white/5 p-3"></div>
+
+          <div class="space-y-4 border-t border-white/5 p-3.5 sm:p-4">
+            <!-- Preset Split Template Picker -->
+            <div class="rounded-2xl border border-white/5 bg-slate-900/60 p-3">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p class="text-[10px] font-bold uppercase tracking-wider text-violet-300">Template Cepat (Opsional)</p>
+                  <p class="text-[10px] text-slate-400">Pilih template dasar lalu sesuaikan tiap harinya</p>
+                </div>
+              </div>
+              <div class="mt-2 flex gap-2">
+                <select id="split-template-select" class="select-field py-2 text-xs">
+                  <option value="general_ppl">General: Push / Pull / Legs + Upper / Lower</option>
+                  <option value="upper_lower">General: Upper / Lower 4-Day Split</option>
+                  <option value="bro_split">General: Bro Split (Chest, Back, Legs, Shoulders, Arms)</option>
+                  <option value="full_body">General: Full Body 3x / Minggu</option>
+                  <option value="powerbuilding">Powerbuilding: Squat / Bench / Deadlift</option>
+                </select>
+                <button id="apply-split-template-btn" type="button" class="btn-secondary shrink-0 px-3 py-2 text-[11px] font-bold text-violet-200">Terapkan</button>
+              </div>
+            </div>
+
+            <!-- Form Edit Split Per Hari -->
+            <form id="split-editor-form" class="rounded-2xl border border-emerald-400/20 bg-slate-900/70 p-3.5 space-y-3" novalidate>
+              <div class="flex items-center justify-between gap-2">
+                <p class="text-[11px] font-bold uppercase tracking-wider text-emerald-300">Edit Detail Hari Split</p>
+                <span class="text-[10px] text-slate-400">Tersimpan di akun Anda</span>
+              </div>
+
+              <div class="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+                <div>
+                  <label for="edit-split-day" class="mb-1 block text-[10px] font-medium text-slate-400">Pilih Hari</label>
+                  <select id="edit-split-day" class="select-field py-2 text-xs">
+                    <option value="1">Day 1</option>
+                    <option value="2">Day 2</option>
+                    <option value="3">Day 3</option>
+                    <option value="4">Day 4</option>
+                    <option value="5">Day 5</option>
+                    <option value="6">Day 6</option>
+                    <option value="7">Day 7</option>
+                  </select>
+                </div>
+                <div class="sm:col-span-2">
+                  <label for="edit-split-name" class="mb-1 block text-[10px] font-medium text-slate-400">Nama Sesi Latihan</label>
+                  <input id="edit-split-name" type="text" maxlength="70" required placeholder="Contoh: Push Day (Chest, Shoulder, Triceps)" class="field py-2 text-xs">
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                <div>
+                  <label for="edit-split-type" class="mb-1 block text-[10px] font-medium text-slate-400">Kategori / Fokus</label>
+                  <input id="edit-split-type" type="text" maxlength="40" placeholder="Contoh: Upper Body · Push / Hypertrophy" class="field py-2 text-xs">
+                </div>
+                <div>
+                  <label for="edit-split-tags" class="mb-1 block text-[10px] font-medium text-slate-400">Target Otot / Gerakan (pisahkan koma)</label>
+                  <input id="edit-split-tags" type="text" maxlength="90" placeholder="Contoh: Chest, Shoulder, Triceps" class="field py-2 text-xs">
+                </div>
+              </div>
+
+              <div>
+                <label for="edit-split-desc" class="mb-1 block text-[10px] font-medium text-slate-400">Catatan / Deskripsi Sesi</label>
+                <input id="edit-split-desc" type="text" maxlength="140" placeholder="Contoh: Fokus gerakan dorong compound dan aksesori bahu/triceps." class="field py-2 text-xs">
+              </div>
+
+              <button type="submit" class="btn-primary w-full py-2.5 text-xs">
+                Simpan Perubahan Split Hari Ini
+              </button>
+            </form>
+
+            <!-- Daftar 7-Day Split -->
+            <div id="workout-split-list" class="space-y-2.5"></div>
+          </div>
         </details>
       </article>
 
@@ -313,10 +440,10 @@
             </span>
             <div>
               <h3 class="text-sm font-semibold text-white">Log Latihan Beban</h3>
-              <p class="mt-0.5 text-[11px] text-slate-400">Powerlifting, weightlifting &amp; hipertrofi</p>
+              <p class="mt-0.5 text-[11px] text-slate-400">Pilih gerakan atau tambahkan jenis latihan baru</p>
             </div>
           </div>
-          <span id="workout-pr-baseline-hint" class="shrink-0 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 font-mono text-[10px] font-semibold text-slate-300">Baseline: 140 kg</span>
+          <span id="workout-pr-baseline-hint" class="shrink-0 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 font-mono text-[10px] font-semibold text-slate-300">Rekor / PR</span>
         </div>
 
         <form id="workout-form" class="relative mt-4 space-y-3.5" novalidate>
@@ -327,33 +454,35 @@
 
           <div>
             <div class="mb-1.5 flex items-center justify-between gap-2">
-              <label for="workout-exercise-select" class="text-[11px] font-medium text-slate-400">Nama Gerakan</label>
-              <span class="text-[10px] text-slate-500">Pilih cepat atau ketik manual</span>
+              <label for="workout-exercise-select" class="text-[11px] font-medium text-slate-400">Nama / Jenis Latihan</label>
+              <span class="text-[10px] text-emerald-300">Bisa tambah latihan baru</span>
             </div>
-            <select id="workout-exercise-select" name="exerciseSelect" class="select-field">
-              <option value="Squat">Squat</option>
-              <option value="Bench Press">Bench Press</option>
-              <option value="Conventional Deadlift">Conventional Deadlift</option>
-              <option value="Sumo Deadlift">Sumo Deadlift</option>
-              <option value="Clean &amp; Jerk">Clean &amp; Jerk</option>
-              <option value="Snatch">Snatch</option>
-              <option value="T-Bar Row">T-Bar Row</option>
-              <option value="Overhead Press">Overhead Press</option>
-              <option value="Incline DB Press">Incline DB Press</option>
-              <option value="__custom__">+ Ketik Manual (Gerakan Lain)...</option>
-            </select>
+            <select id="workout-exercise-select" name="exerciseSelect" class="select-field"></select>
           </div>
 
-          <div id="workout-custom-exercise-wrap" hidden>
-            <label for="workout-exercise-custom" class="mb-1.5 block text-[11px] font-medium text-emerald-300">Ketik Nama Gerakan Manual</label>
-            <input id="workout-exercise-custom" name="exerciseCustom" type="text" maxlength="80" placeholder="Contoh: Romanian Deadlift, Bulgarian Split Squat..." class="field" autocomplete="off">
+          <div id="workout-custom-exercise-wrap" class="rounded-2xl border border-emerald-400/25 bg-emerald-400/[0.05] p-3" hidden>
+            <label for="workout-exercise-custom" class="mb-1.5 block text-[11px] font-semibold text-emerald-300">Tambah / Ketik Jenis Latihan Baru</label>
+            <div class="flex gap-2">
+              <input id="workout-exercise-custom" name="exerciseCustom" type="text" maxlength="80" placeholder="Contoh: Hack Squat, Cable Fly, Pull Up..." class="field text-xs" autocomplete="off">
+              <button id="add-custom-exercise-btn" type="button" class="btn-secondary shrink-0 border-emerald-400/30 bg-emerald-400/15 px-3 text-xs font-bold text-emerald-200 hover:bg-emerald-400/25">
+                + Simpan ke Daftar
+              </button>
+            </div>
+            <p class="mt-1.5 text-[10px] text-slate-400">Latihan baru otomatis tersimpan ke daftar pilihan akun Anda.</p>
+          </div>
+
+          <div id="custom-exercises-manage" class="rounded-xl border border-white/5 bg-slate-950/35 px-3 py-2" hidden>
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <span class="text-[10px] font-semibold text-slate-400">Latihan Tambahan Anda:</span>
+              <div id="custom-exercises-chips" class="flex flex-wrap gap-1.5"></div>
+            </div>
           </div>
 
           <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div>
               <label for="workout-weight" class="mb-1.5 block text-[11px] font-medium text-slate-400">Beban (kg)</label>
               <div class="relative">
-                <input id="workout-weight" name="weight" type="number" inputmode="decimal" min="0" max="600" step="0.5" required placeholder="140" class="field pr-9 font-mono">
+                <input id="workout-weight" name="weight" type="number" inputmode="decimal" min="0" max="600" step="0.5" required placeholder="60" class="field pr-9 font-mono">
                 <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[10px] font-semibold text-slate-500">kg</span>
               </div>
             </div>
@@ -363,7 +492,7 @@
             </div>
             <div>
               <label for="workout-reps" class="mb-1.5 block text-[11px] font-medium text-slate-400">Reps</label>
-              <input id="workout-reps" name="reps" type="number" inputmode="numeric" min="1" max="100" step="1" value="5" required placeholder="5" class="field font-mono">
+              <input id="workout-reps" name="reps" type="number" inputmode="numeric" min="1" max="100" step="1" value="8" required placeholder="8" class="field font-mono">
             </div>
             <div>
               <label for="workout-rpe" class="mb-1.5 block text-[11px] font-medium text-slate-400">RPE (6–10)</label>
@@ -410,21 +539,26 @@
             </span>
             <div>
               <h3 class="text-sm font-semibold text-white">Cardio &amp; Active Recovery Log</h3>
-              <p class="mt-0.5 text-[11px] text-slate-400">Jaga defisit kalori dan kebugaran aerobik</p>
+              <p class="mt-0.5 text-[11px] text-slate-400">Pilih aktivitas cardio atau tambahkan olahraga baru</p>
             </div>
           </div>
-          <span class="shrink-0 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-cyan-300">Recovery</span>
+          <span class="shrink-0 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-cyan-300">Cardio</span>
         </div>
 
         <form id="cardio-form" class="relative mt-4 space-y-3.5" novalidate>
           <div>
             <label for="cardio-activity" class="mb-1.5 block text-[11px] font-medium text-slate-400">Pilihan Aktivitas</label>
-            <select id="cardio-activity" name="activity" class="select-field">
-              <option value="Swimming (Zone 2 / Interval)">Swimming (Zone 2 / Interval)</option>
-              <option value="K-Pop Dance">K-Pop Dance</option>
-              <option value="Incline Treadmill Walk">Incline Treadmill Walk</option>
-              <option value="Skipping">Skipping</option>
-            </select>
+            <select id="cardio-activity" name="activity" class="select-field"></select>
+          </div>
+
+          <div id="cardio-custom-activity-wrap" class="rounded-2xl border border-cyan-400/25 bg-cyan-400/[0.05] p-3" hidden>
+            <label for="cardio-activity-custom" class="mb-1.5 block text-[11px] font-semibold text-cyan-300">Tambah Aktivitas Cardio / Olahraga Baru</label>
+            <div class="flex gap-2">
+              <input id="cardio-activity-custom" type="text" maxlength="80" placeholder="Contoh: Badminton, Futsal, Padel, Rowing..." class="field text-xs" autocomplete="off">
+              <button id="add-custom-cardio-btn" type="button" class="btn-secondary shrink-0 border-cyan-400/30 bg-cyan-400/15 px-3 text-xs font-bold text-cyan-200 hover:bg-cyan-400/25">
+                + Simpan
+              </button>
+            </div>
           </div>
 
           <div class="grid grid-cols-2 gap-3">
@@ -563,15 +697,61 @@
               </svg>
             </span>
             <div>
-              <h3 class="text-sm font-semibold text-white">Quick Add Meal Prep</h3>
-              <p class="mt-0.5 text-[11px] text-slate-400">Sekali ketuk, langsung masuk log</p>
+              <h3 class="text-sm font-semibold text-white">Template Menu Diet (1-Tap)</h3>
+              <p class="mt-0.5 text-[11px] text-slate-400">Ketuk menu untuk langsung masuk log hari ini</p>
             </div>
           </div>
           <span class="shrink-0 whitespace-nowrap rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-emerald-300">1-Tap</span>
         </div>
 
         <div id="quick-meal-grid" class="mt-4 grid grid-cols-2 gap-2.5"></div>
-        <p class="mt-3 text-[10px] leading-relaxed text-slate-500">Setiap ketukan menambahkan satu porsi meal prep ke log hari ini. Ketuk lagi jika porsinya lebih dari satu.</p>
+        <p class="mt-3 text-[10px] leading-relaxed text-slate-500">Setiap ketukan menambahkan 1 porsi ke log hari ini. Anda bisa menambah, mengedit, atau menghapus daftar template menu di bawah.</p>
+
+        <details id="meal-template-details" class="group mt-3.5 rounded-2xl border border-white/5 bg-slate-950/35">
+          <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-xs font-semibold text-slate-300 transition hover:text-white">
+            <span>Atur, Edit &amp; Tambah Template Menu Diet</span>
+            <span class="text-[10px] font-medium text-emerald-400 group-open:hidden">Kelola Menu</span>
+            <span class="hidden text-[10px] font-medium text-slate-400 group-open:inline">Tutup</span>
+          </summary>
+
+          <div class="space-y-4 border-t border-white/5 p-3.5 sm:p-4">
+            <form id="meal-template-form" class="rounded-2xl border border-emerald-400/20 bg-slate-900/70 p-3.5 space-y-3" novalidate>
+              <div class="flex items-center justify-between gap-2">
+                <p id="meal-template-form-title" class="text-[11px] font-bold uppercase tracking-wider text-emerald-300">Tambah Template Menu Baru</p>
+                <button id="meal-template-cancel-edit" type="button" class="text-[10px] font-semibold text-slate-400 hover:text-white" hidden>Batal Edit</button>
+              </div>
+              <input id="template-meal-id" type="hidden" value="">
+
+              <div>
+                <label for="template-meal-name" class="mb-1 block text-[10px] font-medium text-slate-400">Nama Menu / Takaran</label>
+                <input id="template-meal-name" type="text" maxlength="80" required placeholder="Contoh: 150g Dada Ayam Bakar, 1 Porsi Salad..." class="field py-2 text-xs" autocomplete="off">
+              </div>
+
+              <div class="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label for="template-meal-calories" class="mb-1 block text-[10px] font-medium text-slate-400">Kalori (kcal)</label>
+                  <input id="template-meal-calories" type="number" inputmode="numeric" min="0" max="20000" step="1" required placeholder="300" class="field py-2 font-mono text-xs">
+                </div>
+                <div>
+                  <label for="template-meal-protein" class="mb-1 block text-[10px] font-medium text-slate-400">Protein (g)</label>
+                  <input id="template-meal-protein" type="number" inputmode="decimal" min="0" max="1000" step="0.1" required placeholder="35" class="field py-2 font-mono text-xs">
+                </div>
+              </div>
+
+              <button id="meal-template-submit-btn" type="submit" class="btn-primary w-full py-2.5 text-xs">
+                + Simpan ke Template Menu
+              </button>
+            </form>
+
+            <div>
+              <div class="mb-2 flex items-center justify-between gap-2">
+                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Daftar Template Menu Akun Anda</p>
+                <button id="reset-meal-templates-btn" type="button" class="text-[10px] font-semibold text-blue-300 hover:text-blue-200">Reset Default</button>
+              </div>
+              <div id="meal-template-manage-list" class="space-y-2"></div>
+            </div>
+          </div>
+        </details>
       </article>
 
       <article class="glass-card p-5 sm:p-6">
@@ -582,8 +762,8 @@
             </svg>
           </span>
           <div>
-            <h3 class="text-sm font-semibold text-white">Custom Food Input</h3>
-            <p class="mt-0.5 text-[11px] text-slate-400">Untuk makanan di luar menu meal prep</p>
+            <h3 class="text-sm font-semibold text-white">Input Makanan Manual</h3>
+            <p class="mt-0.5 text-[11px] text-slate-400">Catat makanan ke log hari ini atau simpan jadi template</p>
           </div>
         </div>
 
@@ -602,6 +782,10 @@
               <input id="food-protein" name="protein" type="number" inputmode="decimal" min="0" max="1000" step="0.1" required placeholder="35" class="field font-mono">
             </div>
           </div>
+          <label class="flex cursor-pointer items-center gap-2.5 rounded-xl border border-white/5 bg-slate-950/35 px-3 py-2.5 text-xs text-slate-300 transition hover:border-emerald-400/25">
+            <input id="food-save-as-template" type="checkbox" class="h-4 w-4 rounded border-white/20 bg-slate-900 text-emerald-400 focus:ring-emerald-400/50">
+            <span>Simpan juga menu ini sebagai <strong>Template Menu (1-Tap)</strong></span>
+          </label>
           <button type="submit" class="btn-primary flex w-full items-center justify-center gap-2 py-3">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" class="h-4 w-4" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
             Tambah ke Log
@@ -759,60 +943,7 @@
       </div>
     </div>
   </div>
-
-  <!-- AUTHENTICATION GATE OVERLAY -->
-  <div id="auth-gate" class="auth-gate" role="dialog" aria-modal="true" aria-labelledby="auth-title">
-    <div class="auth-card glass-card relative w-full max-w-md p-6 sm:p-8">
-      <div class="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-emerald-400/15 blur-3xl"></div>
-      <div class="pointer-events-none absolute -bottom-16 -left-16 h-44 w-44 rounded-full bg-cyan-400/10 blur-3xl"></div>
-
-      <div class="relative flex items-center gap-3.5">
-        <div class="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-emerald-400 to-cyan-400 text-slate-950 shadow-lg shadow-emerald-500/25">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" class="h-6 w-6" aria-hidden="true">
-            <path d="m6.5 6.5 11 11M3 10l7-7M14 21l7-7M3 14l3-3M18 22l4-4M2 6l4-4"/>
-          </svg>
-        </div>
-        <div>
-          <span id="auth-mode-badge" class="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-emerald-300">
-            Cloud Sync · Multi-User
-          </span>
-          <h2 id="auth-title" class="mt-1 text-xl font-bold tracking-tight text-white">Masuk ke PowerBuild</h2>
-        </div>
-      </div>
-
-      <p id="auth-subtitle" class="relative mt-2.5 text-xs leading-relaxed text-slate-400">
-        Masuk dengan akun email Anda untuk menyinkronkan riwayat berat badan, nutrisi, dan progres angkatan ke cloud secara otomatis.
-      </p>
-
-      <div id="auth-feedback" class="auth-feedback mt-4" role="alert" hidden></div>
-
-      <form id="auth-form" class="relative mt-4 space-y-4" novalidate>
-        <div>
-          <label for="auth-email" class="mb-1.5 block text-xs font-semibold text-slate-300">Email</label>
-          <input id="auth-email" name="email" type="email" inputmode="email" autocomplete="email" required placeholder="nama@email.com" class="field">
-        </div>
-
-        <div>
-          <div class="mb-1.5 flex items-center justify-between">
-            <label for="auth-password" class="text-xs font-semibold text-slate-300">Password</label>
-            <span class="text-[10px] text-slate-500">Min. 6 karakter</span>
-          </div>
-          <input id="auth-password" name="password" type="password" autocomplete="current-password" minlength="6" required placeholder="••••••••" class="field">
-        </div>
-
-        <button id="auth-submit-btn" type="submit" class="btn-primary flex w-full items-center justify-center gap-2 py-3.5 text-sm">
-          <span id="auth-submit-label">Masuk (Login)</span>
-        </button>
-      </form>
-
-      <div class="relative mt-5 border-t border-white/10 pt-4 text-center">
-        <p id="auth-toggle-prompt" class="text-xs text-slate-400">Belum punya akun?</p>
-        <button id="auth-toggle-btn" type="button" class="btn-secondary mt-2.5 w-full py-2.5 text-xs font-bold text-emerald-300 hover:text-emerald-200">
-          Daftar Akun Baru (Register)
-        </button>
-      </div>
-    </div>
-  </div>
+  </div><!-- /#app-shell -->
 
   <div id="toast" class="toast" role="status" aria-live="polite">
     <div class="flex items-center gap-2.5 rounded-2xl border border-white/10 bg-slate-800/95 px-4 py-2.5 shadow-xl shadow-slate-950/40 backdrop-blur-xl">
@@ -823,6 +954,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
-  <script src="app.js" defer></script>
+  <script src="app.js?v=2.2" defer></script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 /* PowerBuild Tracker service worker: app shell + offline fallback. */
-const CACHE_NAME = "powerbuild-shell-v1.2.0";
+const CACHE_NAME = "powerbuild-shell-v2.2.0";
 
 const APP_SHELL = [
   "./",
@@ -98,6 +98,21 @@ async function cacheFirst(request) {
   }
 }
 
+async function networkFirstAsset(request) {
+  const cache = await caches.open(CACHE_NAME);
+  try {
+    const response = await fetch(request);
+    if (response && response.ok) {
+      await cache.put(request, response.clone());
+    }
+    return response;
+  } catch (error) {
+    const cached = await cache.match(request, { ignoreSearch: true });
+    if (cached) return cached;
+    return new Response("", { status: 504, statusText: "Offline" });
+  }
+}
+
 self.addEventListener("fetch", (event) => {
   const request = event.request;
   if (request.method !== "GET") return;
@@ -112,6 +127,11 @@ self.addEventListener("fetch", (event) => {
 
   if (request.mode === "navigate") {
     event.respondWith(networkFirstNavigation(request));
+    return;
+  }
+
+  if (url.origin === self.location.origin) {
+    event.respondWith(networkFirstAsset(request));
     return;
   }
 

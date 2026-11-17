@@ -349,26 +349,26 @@ details > summary::-webkit-details-marker {
   animation: sheet-up 280ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
-body.modal-open,
-body.auth-locked {
+body.modal-open {
   overflow: hidden;
 }
 
-/* Auth Gate Overlay */
+body.auth-locked #app-shell {
+  display: none !important;
+}
+
+/* Primary Login & Register Page (Auth Gate) */
 .auth-gate {
-  position: fixed;
-  inset: 0;
-  z-index: 65;
+  min-height: 100dvh;
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1.25rem;
-  background-color: rgba(2, 6, 23, 0.88);
+  padding: 1.5rem 1.25rem;
+  background-color: #0f172a;
   background-image:
-    radial-gradient(680px 420px at 15% 10%, rgba(16, 185, 129, 0.18), transparent 60%),
-    radial-gradient(640px 420px at 88% 85%, rgba(56, 189, 248, 0.14), transparent 60%);
-  backdrop-filter: blur(22px);
-  -webkit-backdrop-filter: blur(22px);
+    radial-gradient(680px 420px at 15% 10%, rgba(16, 185, 129, 0.2), transparent 60%),
+    radial-gradient(640px 420px at 88% 85%, rgba(56, 189, 248, 0.16), transparent 60%);
   animation: modal-fade 220ms ease-out both;
 }
 
