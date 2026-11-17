@@ -1,0 +1,3244 @@
+(() => {
+  "use strict";
+
+  const STORAGE_KEY = "powerbuild.tracker.v1";
+  const STATE_VERSION = 1;
+  const TAB_IDS = ["dashboard", "workout", "diet", "analytics"];
+  const TAB_TITLES = {
+    dashboard: "Dashboard",
+    workout: "Workout Plan",
+    diet: "Diet & Nutrisi",
+    analytics: "Analytics"
+  };
+
+  const DEFAULT_PROFILE = Object.freeze({
+    startWeight: 94,
+    targetWeight: 80,
+    calorieTarget: 2350,
+    proteinTarget: 180
+  });
+
+  const SPLITS = [
+    {
+      id: 1,
+      day: "Day 1",
+      type: "Lower Body · Push",
+      name: "Squat + Bench Press + Quad Accessories",
+      description: "Fokus kekuatan squat dan bench press, lalu tutup dengan aksesori kuadrisep.",
+      tags: ["Squat", "Bench Press", "Quad Accessories"]
+    },
+    {
+      id: 2,
+      day: "Day 2",
+      type: "Posterior Chain · Pull",
+      name: "Deadlift + Hamstring + Pull Accessories",
+      description: "Deadlift sebagai lift utama, dilanjutkan hamstring dan pull accessories.",
+      tags: ["Deadlift", "Hamstring", "Pull Accessories"]
+    },
+    {
+      id: 3,
+      day: "Day 3",
+      type: "Active Recovery",
+      name: "Active Rest (K-Pop Dance / Skipping / Cardio)",
+      description: "Recovery aktif: pilih K-Pop Dance, skipping, atau cardio ringan 30–45 menit.",
+      tags: ["K-Pop Dance", "Skipping", "Cardio"]
+    },
+    {
+      id: 4,
+      day: "Day 4",
+      type: "Hypertrophy",
+      name: "Hypertrophy (Push + Pull + Arm)",
+      description: "Sesi volume untuk push, pull, dan lengan. Fokus pada kualitas repetisi.",
+      tags: ["Push", "Pull", "Arm"]
+    },
+    {
+      id: 5,
+      day: "Day 5",
+      type: "Powerlifting · SBD",
+      name: "SBD (Squat, Bench, Deadlift)",
+      description: "Squat, bench, dan deadlift dalam satu sesi. Kelola intensitas dengan baik.",
+      tags: ["Squat", "Bench Press", "Deadlift"]
+    },
+    {
+      id: 6,
+      day: "Day 6",
+      type: "Recovery",
+      name: "Total Rest",
+      description: "Istirahat total. Prioritaskan tidur, hidrasi, dan mobilitas ringan bila perlu.",
+      tags: ["Recovery", "Sleep", "Mobility"]
+    },
+    {
+      id: 7,
+      day: "Day 7",
+      type: "Olympic Weightlifting",
+      name: "Weightlifting (Clean & Jerk / Snatch) or Hypertrophy",
+      description: "Sesi olimpi: Clean & Jerk atau Snatch, atau ganti dengan sesi hipertrofi.",
+      tags: ["Clean & Jerk", "Snatch", "Hypertrophy"]
+    }
+  ];
+
+  const SPLIT_SELECT_LABELS = {
+    1: "Day 1 — Squat + Bench + Quads",
+    2: "Day 2 — Deadlift + Hamstring + Pull",
+    3: "Day 3 — Active Rest",
+    4: "Day 4 — Hypertrophy",
+    5: "Day 5 — SBD",
+    6: "Day 6 — Total Rest",
+    7: "Day 7 — Weightlifting / Hypertrophy"
+  };
+
+  const QUICK_MEALS = Object.freeze([
+    {
+      id: "chicken-breast-200",
+      name: "200g Dada Ayam",
+      calories: 330,
+      protein: 62
+    },
+    {
+      id: "white-rice-150",
+      name: "150g Nasi Putih",
+      calories: 195,
+      protein: 4
+    },
+    {
+      id: "overnight-oats-protein-milk",
+      name: "Overnight Oats + Protein Milk",
+      calories: 350,
+      protein: 25
+    },
+    {
+      id: "boiled-eggs-4",
+      name: "4 Telur Rebus",
+      calories: 310,
+      protein: 25
+    },
+    {
+      id: "dory-tilapia-150",
+      name: "150g Ikan Dori/Nila",
+      calories: 190,
+      protein: 35
+    },
+    {
+      id: "tempeh-tofu-2",
+      name: "2 Potong Tempe/Tahu",
+      calories: 160,
+      protein: 14
+    },
+    {
+      id: "whey-banana-1",
+      name: "1 Scoop Whey + Pisang",
+      calories: 225,
+      protein: 25
+    }
+  ]);
+
+  const PRESET_EXERCISES = Object.freeze([
+    "Squat",
+    "Bench Press",
+    "Conventional Deadlift",
+    "Sumo Deadlift",
+    "Clean & Jerk",
+    "Snatch",
+    "T-Bar Row",
+    "Overhead Press",
+    "Incline DB Press"
+  ]);
+
+  const STRENGTH_EXERCISES = Object.freeze([
+    "Squat",
+    "Bench Press",
+    "Deadlift",
+    "Clean & Jerk",
+    "Snatch"
+  ]);
+
+  const BASELINE_PRS = Object.freeze({
+    "squat": 140,
+    "bench press": 100,
+    "conventional deadlift": 192,
+    "sumo deadlift": 192,
+    "deadlift": 192,
+    "clean & jerk": 85,
+    "snatch": 65,
+    "t-bar row": 80,
+    "overhead press": 60,
+    "incline db press": 36
+  });
+
+  const CARDIO_ACTIVITIES = Object.freeze([
+    "Swimming (Zone 2 / Interval)",
+    "K-Pop Dance",
+    "Incline Treadmill Walk",
+    "Skipping"
+  ]);
+
+  const CARDIO_KCAL_PER_MIN = Object.freeze({
+    "Swimming (Zone 2 / Interval)": 9,
+    "K-Pop Dance": 7.5,
+    "Incline Treadmill Walk": 6,
+    "Skipping": 11
+  });
+
+  const BODY_NOTE_TAGS = Object.freeze([
+    "Wrist Kanan Aman",
+    "Wrist Kanan Stiff/Nyeri",
+    "Wrist Kiri Aman",
+    "Wrist Kiri Stiff/Nyeri",
+    "DOMS Lower Back",
+    "DOMS Hamstring",
+    "DOMS Quad",
+    "Lower Back Fresh",
+    "Sendi Bahu/Lutut Aman"
+  ]);
+
+  const SUPABASE_RAW_URL = "https://supabase.com/dashboard/project/tnzgvexoxxuiwwwazozy";
+  const SUPABASE_ANON_KEY = "sb_publishable_v3-Ca_xImJsRkb8oNQEW5Q_9L9d_Mqz";
+  const SUPABASE_TABLE = "user_tracker_data";
+
+  function resolveSupabaseApiUrl(rawUrl) {
+    const cleaned = String(rawUrl || "").replace(/^\[|\]$/g, "").trim();
+    const dashboardMatch = cleaned.match(/supabase\.com\/dashboard\/project\/([a-z0-9-]+)/i);
+    if (dashboardMatch && dashboardMatch[1]) {
+      return `https://${dashboardMatch[1]}.supabase.co`;
+    }
+    return cleaned.replace(/\/+$/, "");
+  }
+
+  const SUPABASE_URL = resolveSupabaseApiUrl(SUPABASE_RAW_URL);
+
+  const els = {};
+  let state;
+  let currentDay = "";
+  let toastTimer = null;
+  let lastFocusedElement = null;
+  let storageWarned = false;
+  let cardioCaloriesManual = false;
+  let bodyweightChartInstance = null;
+  let strengthChartInstance = null;
+  let analyticsChartFrame = null;
+  let strengthFilter = STRENGTH_EXERCISES[0];
+  let supabaseClient = null;
+  let currentUser = null;
+  let authMode = "login";
+  let authBusy = false;
+  let isHydratingFromCloud = false;
+  let syncQueueTimer = null;
+
+  const numberFormatter = new Intl.NumberFormat("id-ID");
+  const decimalFormatter = new Intl.NumberFormat("id-ID", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1
+  });
+  const macroFormatter = new Intl.NumberFormat("id-ID", {
+    maximumFractionDigits: 1
+  });
+  const dateFormatter = new Intl.DateTimeFormat("id-ID", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric"
+  });
+  const weekdayFormatter = new Intl.DateTimeFormat("id-ID", {
+    weekday: "short",
+    day: "numeric"
+  });
+  const timeFormatter = new Intl.DateTimeFormat("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+  const chartDateFormatter = new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    month: "short"
+  });
+  const strengthDateFormatter = new Intl.DateTimeFormat("id-ID", {
+    weekday: "short",
+    day: "numeric",
+    month: "short"
+  });
+
+  function pad(value) {
+    return String(value).padStart(2, "0");
+  }
+
+  function dateKey(date = new Date()) {
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  }
+
+  function parseDateKey(key) {
+    const [year, month, day] = String(key).split("-").map(Number);
+    return new Date(year, month - 1, day, 12, 0, 0, 0);
+  }
+
+  function isValidDateKey(key) {
+    if (typeof key !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(key)) return false;
+    const parsed = parseDateKey(key);
+    return !Number.isNaN(parsed.getTime()) && dateKey(parsed) === key;
+  }
+
+  function todayKey() {
+    return dateKey(new Date());
+  }
+
+  function capitalize(value) {
+    const text = String(value);
+    return text ? text.charAt(0).toUpperCase() + text.slice(1) : text;
+  }
+
+  function round1(value) {
+    return Math.round(Number(value) * 10) / 10;
+  }
+
+  function clamp(value, min, max) {
+    return Math.min(Math.max(value, min), max);
+  }
+
+  function formatNumber(value) {
+    return numberFormatter.format(Number(value) || 0);
+  }
+
+  function formatWeight(value) {
+    return decimalFormatter.format(Number(value) || 0);
+  }
+
+  function formatMacro(value) {
+    return macroFormatter.format(Number(value) || 0);
+  }
+
+  function formatTime(value) {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? "" : timeFormatter.format(parsed);
+  }
+
+  function formatShortDay(key) {
+    return capitalize(weekdayFormatter.format(parseDateKey(key)));
+  }
+
+  function formatChartDate(key) {
+    return chartDateFormatter.format(parseDateKey(key));
+  }
+
+  function formatStrengthDate(key) {
+    return capitalize(strengthDateFormatter.format(parseDateKey(key)));
+  }
+
+  function escapeHTML(value) {
+    const replacements = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#039;"
+    };
+    return String(value).replace(/[&<>"']/g, (character) => replacements[character]);
+  }
+
+  function uid() {
+    if (globalThis.crypto && typeof globalThis.crypto.randomUUID === "function") {
+      return globalThis.crypto.randomUUID();
+    }
+    return `id-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  }
+
+  function normalizeId(value) {
+    const normalized = String(value ?? "")
+      .replace(/[^a-zA-Z0-9_-]/g, "")
+      .slice(0, 64);
+    return normalized || uid();
+  }
+
+  function validNumber(value, min, max) {
+    const raw = typeof value === "number" ? value : Number(String(value ?? "").replace(",", "."));
+    if (!Number.isFinite(raw) || raw < min || raw > max) return null;
+    return raw;
+  }
+
+  function lastNDays(count) {
+    const result = [];
+    const cursor = new Date();
+    cursor.setHours(12, 0, 0, 0);
+    for (let offset = count - 1; offset >= 0; offset -= 1) {
+      const day = new Date(cursor);
+      day.setDate(cursor.getDate() - offset);
+      result.push(dateKey(day));
+    }
+    return result;
+  }
+
+  function calculateEpley1RM(weight, reps) {
+    const w = Number(weight);
+    const r = Number(reps);
+    if (!Number.isFinite(w) || w <= 0 || !Number.isFinite(r) || r <= 0) return 0;
+    return round1(w * (1 + r / 30));
+  }
+
+  function normalizeExerciseKey(name) {
+    return String(name ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+  }
+
+  function getBaselinePR(exerciseName) {
+    const key = normalizeExerciseKey(exerciseName);
+    if (key in BASELINE_PRS) return BASELINE_PRS[key];
+    return null;
+  }
+
+  function createDefaultState() {
+    const now = new Date().toISOString();
+    const today = todayKey();
+    return {
+      version: STATE_VERSION,
+      profile: { ...DEFAULT_PROFILE },
+      weights: [
+        {
+          date: today,
+          weight: DEFAULT_PROFILE.startWeight,
+          updatedAt: now
+        }
+      ],
+      foodLogs: [],
+      workoutLogs: [],
+      cardioLogs: [],
+      bodyNotes: [],
+      selectedSplits: { [today]: 1 },
+      createdAt: now
+    };
+  }
+
+  function sanitizeState(raw, strict = false) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+      throw new Error("Struktur data tidak dikenali.");
+    }
+
+    const source = raw.data && typeof raw.data === "object" && !Array.isArray(raw.data)
+      ? raw.data
+      : raw;
+
+    if (!source || typeof source !== "object" || Array.isArray(source)) {
+      throw new Error("Struktur data tidak dikenali.");
+    }
+
+    const knownKeys = ["profile", "weights", "foodLogs", "workoutLogs", "cardioLogs", "bodyNotes", "selectedSplits"];
+    if (strict && !knownKeys.some((key) => key in source)) {
+      throw new Error("File JSON bukan backup PowerBuild Tracker.");
+    }
+
+    const weightMap = new Map();
+    if (Array.isArray(source.weights)) {
+      source.weights.forEach((item) => {
+        if (!item || typeof item !== "object") return;
+        const key = item.date;
+        const weight = validNumber(item.weight, 20, 500);
+        if (!isValidDateKey(key) || weight === null) return;
+        const updatedAt = !Number.isNaN(new Date(item.updatedAt).getTime())
+          ? new Date(item.updatedAt).toISOString()
+          : `${key}T12:00:00.000Z`;
+        weightMap.set(key, {
+          date: key,
+          weight: round1(weight),
+          updatedAt
+        });
+      });
+    }
+
+    let weights = [...weightMap.values()].sort((a, b) => a.date.localeCompare(b.date));
+    if (weights.length === 0) {
+      weights = [
+        {
+          date: todayKey(),
+          weight: DEFAULT_PROFILE.startWeight,
+          updatedAt: new Date().toISOString()
+        }
+      ];
+    }
+
+    const rawProfile = source.profile && typeof source.profile === "object"
+      ? source.profile
+      : {};
+    const earliestWeight = weights[0].weight;
+    const startWeight =
+      validNumber(rawProfile.startWeight, 30, 300) ?? earliestWeight ?? DEFAULT_PROFILE.startWeight;
+    const targetWeight =
+      validNumber(rawProfile.targetWeight, 30, 300) ?? DEFAULT_PROFILE.targetWeight;
+    const calorieTarget =
+      validNumber(rawProfile.calorieTarget, 800, 10000) ?? DEFAULT_PROFILE.calorieTarget;
+    const proteinTarget =
+      validNumber(rawProfile.proteinTarget, 30, 500) ?? DEFAULT_PROFILE.proteinTarget;
+
+    const profile = {
+      startWeight: round1(startWeight),
+      targetWeight: round1(targetWeight),
+      calorieTarget: Math.round(calorieTarget),
+      proteinTarget: round1(proteinTarget)
+    };
+
+    const seenFoodIds = new Set();
+    const foodLogs = [];
+    if (Array.isArray(source.foodLogs)) {
+      source.foodLogs.forEach((item) => {
+        if (!item || typeof item !== "object") return;
+        const key = item.date;
+        const name = typeof item.name === "string" ? item.name.trim().slice(0, 80) : "";
+        const calories = validNumber(item.calories, 0, 20000);
+        const protein = validNumber(item.protein, 0, 1000);
+        if (!isValidDateKey(key) || !name || calories === null || protein === null) return;
+
+        let id = normalizeId(item.id);
+        while (seenFoodIds.has(id)) id = uid();
+        seenFoodIds.add(id);
+
+        const createdAt = !Number.isNaN(new Date(item.createdAt).getTime())
+          ? new Date(item.createdAt).toISOString()
+          : `${key}T12:00:00.000Z`;
+
+        foodLogs.push({
+          id,
+          date: key,
+          name,
+          calories: Math.round(calories),
+          protein: round1(protein),
+          createdAt
+        });
+      });
+    }
+
+    const seenWorkoutIds = new Set();
+    const workoutLogs = [];
+    if (Array.isArray(source.workoutLogs)) {
+      source.workoutLogs.forEach((item) => {
+        if (!item || typeof item !== "object") return;
+        const key = item.date;
+        const exercise = typeof item.exercise === "string" ? item.exercise.trim().slice(0, 80) : "";
+        const splitId = Number.isInteger(Number(item.splitId)) && Number(item.splitId) >= 1 && Number(item.splitId) <= 7
+          ? Number(item.splitId)
+          : 1;
+        const weight = validNumber(item.weight, 0, 600);
+        const sets = validNumber(item.sets, 1, 30);
+        const reps = validNumber(item.reps, 1, 100);
+        const rpe = validNumber(item.rpe, 6, 10);
+        if (!isValidDateKey(key) || !exercise || weight === null || sets === null || reps === null || rpe === null) return;
+
+        let id = normalizeId(item.id);
+        while (seenWorkoutIds.has(id)) id = uid();
+        seenWorkoutIds.add(id);
+
+        const createdAt = !Number.isNaN(new Date(item.createdAt).getTime())
+          ? new Date(item.createdAt).toISOString()
+          : `${key}T12:00:00.000Z`;
+
+        const baseline = getBaselinePR(exercise);
+        const isPR = Boolean(item.isPR) || (baseline !== null && weight > baseline);
+
+        workoutLogs.push({
+          id,
+          date: key,
+          splitId,
+          exercise,
+          weight: round1(weight),
+          sets: Math.round(sets),
+          reps: Math.round(reps),
+          rpe: round1(rpe),
+          est1RM: calculateEpley1RM(weight, reps),
+          isPR,
+          createdAt
+        });
+      });
+    }
+
+    const seenCardioIds = new Set();
+    const cardioLogs = [];
+    if (Array.isArray(source.cardioLogs)) {
+      source.cardioLogs.forEach((item) => {
+        if (!item || typeof item !== "object") return;
+        const key = item.date;
+        const activity = typeof item.activity === "string" ? item.activity.trim().slice(0, 80) : "";
+        const duration = validNumber(item.duration, 1, 600);
+        const calories = validNumber(item.calories, 1, 5000);
+        if (!isValidDateKey(key) || !activity || duration === null || calories === null) return;
+
+        let id = normalizeId(item.id);
+        while (seenCardioIds.has(id)) id = uid();
+        seenCardioIds.add(id);
+
+        const createdAt = !Number.isNaN(new Date(item.createdAt).getTime())
+          ? new Date(item.createdAt).toISOString()
+          : `${key}T12:00:00.000Z`;
+
+        cardioLogs.push({
+          id,
+          date: key,
+          activity,
+          duration: Math.round(duration),
+          calories: Math.round(calories),
+          createdAt
+        });
+      });
+    }
+
+    const bodyNotesMap = new Map();
+    if (Array.isArray(source.bodyNotes)) {
+      source.bodyNotes.forEach((item) => {
+        if (!item || typeof item !== "object") return;
+        const key = item.date;
+        if (!isValidDateKey(key)) return;
+        const tags = Array.isArray(item.tags)
+          ? item.tags.map((t) => String(t).trim()).filter((t) => t.length > 0 && t.length <= 50).slice(0, 12)
+          : [];
+        const note = typeof item.note === "string" ? item.note.trim().slice(0, 200) : "";
+        if (tags.length === 0 && !note) return;
+        const updatedAt = !Number.isNaN(new Date(item.updatedAt).getTime())
+          ? new Date(item.updatedAt).toISOString()
+          : `${key}T12:00:00.000Z`;
+        bodyNotesMap.set(key, {
+          date: key,
+          tags: [...new Set(tags)],
+          note,
+          updatedAt
+        });
+      });
+    }
+    const bodyNotes = [...bodyNotesMap.values()].sort((a, b) => b.date.localeCompare(a.date));
+
+    const selectedSplits = {};
+    if (source.selectedSplits && typeof source.selectedSplits === "object") {
+      Object.entries(source.selectedSplits).forEach(([key, value]) => {
+        const splitId = Number(value);
+        if (isValidDateKey(key) && Number.isInteger(splitId) && splitId >= 1 && splitId <= 7) {
+          selectedSplits[key] = splitId;
+        }
+      });
+    }
+    if (!selectedSplits[todayKey()]) selectedSplits[todayKey()] = 1;
+
+    return {
+      version: STATE_VERSION,
+      profile,
+      weights,
+      foodLogs,
+      workoutLogs,
+      cardioLogs,
+      bodyNotes,
+      selectedSplits,
+      createdAt: typeof source.createdAt === "string" ? source.createdAt : new Date().toISOString()
+    };
+  }
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return createDefaultState();
+      return sanitizeState(JSON.parse(raw));
+    } catch (error) {
+      console.warn("Gagal memuat data lokal:", error);
+      return createDefaultState();
+    }
+  }
+
+  function setSyncStatus(mode = "idle", customText = "") {
+    if (!els.syncStatusBadge || !els.syncStatusText) return;
+    els.syncStatusBadge.dataset.syncState = mode;
+    if (customText) {
+      els.syncStatusText.textContent = customText;
+    } else if (mode === "saving") {
+      els.syncStatusText.textContent = "Saving...";
+    } else if (mode === "error") {
+      els.syncStatusText.textContent = "Sync Pending";
+    } else {
+      els.syncStatusText.textContent = "Cloud Synced";
+    }
+  }
+
+  async function syncStateToCloud() {
+    if (!supabaseClient || !currentUser || isHydratingFromCloud) return false;
+    setSyncStatus("saving", "Saving...");
+    try {
+      const payload = {
+        user_id: currentUser.id,
+        email: currentUser.email || "",
+        app_data: state,
+        updated_at: new Date().toISOString()
+      };
+      const { error } = await supabaseClient
+        .from(SUPABASE_TABLE)
+        .upsert(payload, { onConflict: "user_id" });
+
+      if (error) throw error;
+      setSyncStatus("idle", "Cloud Synced");
+      return true;
+    } catch (error) {
+      console.warn("Gagal sinkronisasi ke Supabase:", error);
+      setSyncStatus("error", navigator.onLine === false ? "Offline" : "Sync Error");
+      return false;
+    }
+  }
+
+  function scheduleCloudSync(immediate = false) {
+    if (!supabaseClient || !currentUser || isHydratingFromCloud) return;
+    window.clearTimeout(syncQueueTimer);
+    setSyncStatus("saving", "Saving...");
+    if (immediate) {
+      syncStateToCloud();
+      return;
+    }
+    syncQueueTimer = window.setTimeout(() => {
+      syncStateToCloud();
+    }, 180);
+  }
+
+  function persistState(options = {}) {
+    const shouldSync = options.sync ?? true;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      if (shouldSync && currentUser && !isHydratingFromCloud) {
+        scheduleCloudSync();
+      }
+      return true;
+    } catch (error) {
+      console.warn("Gagal menyimpan data lokal:", error);
+      if (!storageWarned) {
+        storageWarned = true;
+        showToast("Gagal menyimpan ke LocalStorage. Periksa pengaturan browser.", "error");
+      }
+      if (shouldSync && currentUser && !isHydratingFromCloud) {
+        scheduleCloudSync();
+      }
+      return false;
+    }
+  }
+
+  function getLatestWeightEntry() {
+    if (!Array.isArray(state.weights) || state.weights.length === 0) {
+      return {
+        date: todayKey(),
+        weight: state.profile.startWeight,
+        updatedAt: new Date().toISOString()
+      };
+    }
+    return state.weights.reduce((latest, entry) =>
+      !latest || entry.date >= latest.date ? entry : latest
+    , null);
+  }
+
+  function getPreviousWeightEntry() {
+    const latest = getLatestWeightEntry();
+    const older = state.weights
+      .filter((entry) => entry.date < latest.date)
+      .sort((a, b) => a.date.localeCompare(b.date));
+    return older.length ? older[older.length - 1] : null;
+  }
+
+  function getTodayWeightEntry() {
+    return state.weights.find((entry) => entry.date === todayKey()) ?? null;
+  }
+
+  function getFoodLogsFor(key) {
+    return state.foodLogs
+      .filter((item) => item.date === key)
+      .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  }
+
+  function getTodayFoodLogs() {
+    return getFoodLogsFor(todayKey());
+  }
+
+  function sumNutrition(logs) {
+    return logs.reduce(
+      (totals, item) => {
+        totals.calories += Number(item.calories) || 0;
+        totals.protein += Number(item.protein) || 0;
+        return totals;
+      },
+      { calories: 0, protein: 0 }
+    );
+  }
+
+  function getSplit(id) {
+    return SPLITS.find((split) => split.id === Number(id)) ?? null;
+  }
+
+  function getSelectedSplitId() {
+    const selected = Number(state.selectedSplits[todayKey()]);
+    return Number.isInteger(selected) && selected >= 1 && selected <= 7 ? selected : 1;
+  }
+
+  function getWeightProgress() {
+    const { startWeight, targetWeight } = state.profile;
+    const current = getLatestWeightEntry().weight;
+    const totalToLose = startWeight - targetWeight;
+    const lost = startWeight - current;
+    const percentage = totalToLose > 0
+      ? clamp((lost / totalToLose) * 100, 0, 100)
+      : 0;
+    return {
+      current,
+      startWeight,
+      targetWeight,
+      lost,
+      remaining: Math.max(current - targetWeight, 0),
+      percentage
+    };
+  }
+
+  function startOfWeekKey(key) {
+    const date = parseDateKey(key);
+    const offset = (date.getDay() + 6) % 7;
+    date.setDate(date.getDate() - offset);
+    return dateKey(date);
+  }
+
+  function matchesStrengthFilter(exerciseName, filter) {
+    const key = normalizeExerciseKey(exerciseName);
+    if (!key) return false;
+
+    if (filter === "Deadlift") return key.includes("deadlift");
+    if (filter === "Bench Press") return key === "bench press" || key.endsWith(" bench press");
+    if (filter === "Clean & Jerk") return key.includes("clean") && key.includes("jerk");
+    if (filter === "Snatch") return key.includes("snatch");
+    if (filter === "Squat") {
+      return key === "squat" || key === "back squat" || key === "barbell squat";
+    }
+    return key === normalizeExerciseKey(filter);
+  }
+
+  function getStrengthLogsForFilter(filter) {
+    return state.workoutLogs
+      .filter((log) => matchesStrengthFilter(log.exercise, filter))
+      .sort((a, b) => b.date.localeCompare(a.date) || String(b.createdAt).localeCompare(String(a.createdAt)));
+  }
+
+  function getStrengthWeeklyData(filter) {
+    const weeks = new Map();
+
+    state.workoutLogs.forEach((log) => {
+      if (!matchesStrengthFilter(log.exercise, filter)) return;
+
+      const week = startOfWeekKey(log.date);
+      const weight = Number(log.weight) || 0;
+      const reps = Number(log.reps) || 0;
+      const e1rm = Number(log.est1RM) > 0
+        ? round1(log.est1RM)
+        : calculateEpley1RM(weight, reps);
+
+      const bucket = weeks.get(week) ?? {
+        week,
+        topSet: 0,
+        topSetReps: 0,
+        e1rm: 0,
+        count: 0
+      };
+
+      if (weight > bucket.topSet || (weight === bucket.topSet && reps > bucket.topSetReps)) {
+        bucket.topSet = weight;
+        bucket.topSetReps = reps;
+      }
+      bucket.e1rm = Math.max(bucket.e1rm, e1rm);
+      bucket.count += 1;
+      weeks.set(week, bucket);
+    });
+
+    return [...weeks.values()]
+      .sort((a, b) => a.week.localeCompare(b.week))
+      .slice(-12);
+  }
+
+  function getStrengthSummary(filter) {
+    const logs = getStrengthLogsForFilter(filter);
+    return logs.reduce(
+      (summary, log) => {
+        const weight = Number(log.weight) || 0;
+        const e1rm = Number(log.est1RM) > 0
+          ? round1(log.est1RM)
+          : calculateEpley1RM(weight, log.reps);
+        summary.bestTopSet = Math.max(summary.bestTopSet, weight);
+        summary.bestE1rm = Math.max(summary.bestE1rm, e1rm);
+        summary.totalSets += Math.max(1, Number(log.sets) || 1);
+        return summary;
+      },
+      { bestTopSet: 0, bestE1rm: 0, totalSets: 0 }
+    );
+  }
+
+  function splitIcon(id, className = "h-5 w-5") {
+    const base = `viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="${className}" aria-hidden="true"`;
+    if (Number(id) === 3) {
+      return `<svg ${base}><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>`;
+    }
+    if (Number(id) === 6) {
+      return `<svg ${base}><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/><path d="M19 3v4M17 5h4"/></svg>`;
+    }
+    if (Number(id) === 7) {
+      return `<svg ${base}><path d="m6.5 6.5 11 11M3 10l7-7M14 21l7-7M3 14l3-3M18 22l4-4M2 6l4-4"/></svg>`;
+    }
+    return `<svg ${base}><path d="m6.5 6.5 11 11M3 10l7-7M14 21l7-7M3 14l3-3M18 22l4-4M2 6l4-4"/></svg>`;
+  }
+
+  function buildWeightChart(entries, options = {}) {
+    const input = Array.isArray(entries)
+      ? entries.filter((entry) => Number.isFinite(Number(entry.weight)))
+      : [];
+
+    if (input.length < 2) {
+      return `<div class="chart-empty">Catat minimal 2 hari untuk melihat tren berat badan.</div>`;
+    }
+
+    const sorted = [...input].sort((a, b) => String(a.date).localeCompare(String(b.date)));
+    const width = options.width ?? 600;
+    const height = options.height ?? 120;
+    const padX = 8;
+    const padTop = 12;
+    const padBottom = 12;
+    const values = sorted.map((entry) => Number(entry.weight));
+    let min = Math.min(...values);
+    let max = Math.max(...values);
+
+    if (max - min < 0.8) {
+      const middle = (max + min) / 2;
+      min = middle - 0.5;
+      max = middle + 0.5;
+    } else {
+      min -= 0.45;
+      max += 0.45;
+    }
+
+    const usableWidth = width - padX * 2;
+    const usableHeight = height - padTop - padBottom;
+    const coordinates = sorted.map((entry, index) => ({
+      x: padX + (usableWidth * index) / (sorted.length - 1),
+      y: padTop + (1 - (Number(entry.weight) - min) / (max - min)) * usableHeight
+    }));
+
+    const linePath = coordinates
+      .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`)
+      .join(" ");
+    const first = coordinates[0];
+    const last = coordinates[coordinates.length - 1];
+    const areaPath = `${linePath} L ${last.x.toFixed(2)} ${(height - padBottom).toFixed(2)} L ${first.x.toFixed(2)} ${(height - padBottom).toFixed(2)} Z`;
+    const grid = [0.25, 0.5, 0.75]
+      .map((fraction) => {
+        const y = padTop + usableHeight * fraction;
+        return `<path d="M ${padX} ${y.toFixed(2)} H ${(width - padX).toFixed(2)}" stroke="rgba(148, 163, 184, 0.09)" stroke-width="1"/>`;
+      })
+      .join("");
+    const safeId = `weight-gradient-${String(options.gradientId ?? "default").replace(/[^a-zA-Z0-9_-]/g, "")}`;
+    const rangeLabel = `${formatShortDay(sorted[0].date)}–${formatShortDay(sorted[sorted.length - 1].date)}`;
+
+    return `
+      <svg class="weight-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Grafik tren berat badan ${escapeHTML(rangeLabel)}">
+        <defs>
+          <linearGradient id="${safeId}" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#34d399" stop-opacity="0.26"/>
+            <stop offset="100%" stop-color="#34d399" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        ${grid}
+        <path d="${areaPath}" fill="url(#${safeId})"/>
+        <path d="${linePath}" fill="none" stroke="#34d399" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="${last.x.toFixed(2)}" cy="${last.y.toFixed(2)}" r="3.8" fill="#0f172a" stroke="#34d399" stroke-width="2.4"/>
+      </svg>
+    `;
+  }
+
+  function renderDates() {
+    const formatted = capitalize(dateFormatter.format(new Date()));
+    els.todayDates.forEach((element) => {
+      element.textContent = formatted;
+    });
+  }
+
+  function populateSplitSelect() {
+    const optionsMarkup = SPLITS
+      .map((split) => `<option value="${split.id}">${escapeHTML(SPLIT_SELECT_LABELS[split.id] ?? `${split.day} — ${split.name}`)}</option>`)
+      .join("");
+    els.splitSelect.innerHTML = optionsMarkup;
+    if (els.workoutSplitSelect) {
+      els.workoutSplitSelect.innerHTML = optionsMarkup;
+    }
+  }
+
+  function renderQuickMeals() {
+    els.quickMealGrid.innerHTML = QUICK_MEALS
+      .map((meal, index) => {
+        const tone = index % 2 === 0
+          ? "bg-emerald-400/10 text-emerald-300 ring-emerald-400/15"
+          : "bg-blue-400/10 text-blue-300 ring-blue-400/15";
+
+        return `
+          <button type="button" data-quick-meal-index="${index}" class="quick-add-btn group flex min-h-[6.8rem] flex-col justify-between rounded-2xl border border-white/5 bg-slate-950/30 p-3 text-left transition hover:border-emerald-400/25 hover:bg-emerald-400/[0.055] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60" aria-label="Tambahkan ${escapeHTML(meal.name)}: ${formatNumber(meal.calories)} kilokalori, ${formatMacro(meal.protein)} gram protein">
+            <span class="flex w-full items-start justify-between gap-2">
+              <span class="grid h-7 w-7 place-items-center rounded-lg ring-1 ring-inset ${tone}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="h-3.5 w-3.5" aria-hidden="true">
+                  <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v8h5Z"/><path d="M21 15v7"/>
+                </svg>
+              </span>
+              <span class="quick-add-plus grid h-6 w-6 place-items-center rounded-full border border-white/10 bg-white/[0.035] text-slate-500 transition">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" class="h-3 w-3" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </span>
+            </span>
+            <span class="mt-2.5 block">
+              <span class="block text-[11px] font-semibold leading-snug text-white">+${escapeHTML(meal.name)}</span>
+              <span class="mt-1 flex flex-wrap items-center gap-x-1 text-[9px] font-medium leading-relaxed text-slate-500">
+                <span>${formatNumber(meal.calories)} kcal</span>
+                <span class="text-slate-700">·</span>
+                <span class="text-emerald-300/75">${formatMacro(meal.protein)} g protein</span>
+              </span>
+            </span>
+          </button>
+        `;
+      })
+      .join("");
+  }
+
+  function renderWeightCard() {
+    const latest = getLatestWeightEntry();
+    const previous = getPreviousWeightEntry();
+    const progress = getWeightProgress();
+    const target = state.profile.targetWeight;
+
+    els.currentWeight.textContent = formatWeight(latest.weight);
+    els.targetWeight.textContent = formatNumber(target);
+    els.targetWeightSide.textContent = formatNumber(target);
+    els.weightStart.textContent = formatNumber(progress.startWeight);
+    els.weightProgressLabel.textContent = `${Math.round(progress.percentage)}%`;
+    els.weightProgressBar.style.width = `${progress.percentage}%`;
+
+    const progressTrack = els.weightProgressBar.parentElement;
+    if (progressTrack) {
+      progressTrack.setAttribute("aria-valuenow", String(Math.round(progress.percentage)));
+    }
+
+    els.weightRemaining.textContent = progress.remaining <= 0
+      ? "Target tercapai — pertahankan!"
+      : `${formatWeight(progress.remaining)} kg lagi menuju target`;
+
+    const badgeBase = "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ";
+    if (previous) {
+      const difference = round1(latest.weight - previous.weight);
+      if (Math.abs(difference) < 0.05) {
+        els.weightChangeBadge.className = `${badgeBase}bg-white/5 text-slate-400`;
+        els.weightChangeBadge.textContent = "Stabil";
+      } else {
+        const isDown = difference < 0;
+        els.weightChangeBadge.className = `${badgeBase}${isDown ? "bg-emerald-400/10 text-emerald-300" : "bg-rose-400/10 text-rose-300"}`;
+        els.weightChangeBadge.textContent = `${isDown ? "↓" : "↑"} ${formatWeight(Math.abs(difference))} kg`;
+      }
+    } else {
+      els.weightChangeBadge.className = `${badgeBase}bg-white/5 text-slate-400`;
+      els.weightChangeBadge.textContent = "—";
+    }
+
+    const todayEntry = getTodayWeightEntry();
+    els.weightSavedStatus.textContent = todayEntry
+      ? `Tersimpan hari ini pukul ${formatTime(todayEntry.updatedAt) || "—"}.`
+      : "Belum ada update hari ini.";
+
+    if (document.activeElement !== els.weightInput) {
+      els.weightInput.value = String(round1(todayEntry?.weight ?? latest.weight));
+    }
+
+    const chartEntries = state.weights.slice(-7);
+    els.weightChart.innerHTML = buildWeightChart(chartEntries, {
+      width: 600,
+      height: 118,
+      gradientId: "dashboard"
+    });
+    els.weightTrendLabel.textContent = chartEntries.length > 1
+      ? `${chartEntries.length} catatan terakhir`
+      : "Butuh 1 catatan lagi";
+  }
+
+  function updateNutritionMetric({ valueEl, targetEl, percentEl, barEl, noteEl, consumed, target, unit, formatter }) {
+    const percent = target > 0 ? (consumed / target) * 100 : 0;
+    valueEl.textContent = formatter(consumed);
+    targetEl.textContent = formatter(target);
+    percentEl.textContent = `${Math.round(percent)}%`;
+    barEl.style.width = `${clamp(percent, 0, 100)}%`;
+
+    const track = barEl.parentElement;
+    if (track) {
+      track.setAttribute("aria-valuenow", String(Math.round(clamp(percent, 0, 100))));
+    }
+
+    const remaining = round1(target - consumed);
+    const isOver = remaining < 0;
+    noteEl.textContent = isOver
+      ? `${formatter(Math.abs(remaining))} ${unit} di atas target`
+      : `Sisa ${formatter(remaining)} ${unit}`;
+    noteEl.classList.toggle("text-rose-300", isOver);
+    noteEl.classList.toggle("text-slate-500", !isOver);
+  }
+
+  function renderNutrition() {
+    const logs = getTodayFoodLogs();
+    const totals = sumNutrition(logs);
+    const { calorieTarget, proteinTarget } = state.profile;
+
+    updateNutritionMetric({
+      valueEl: els.dashCaloriesValue,
+      targetEl: els.dashCaloriesTarget,
+      percentEl: els.dashCaloriesPercent,
+      barEl: els.dashCaloriesBar,
+      noteEl: els.dashCaloriesNote,
+      consumed: totals.calories,
+      target: calorieTarget,
+      unit: "kcal",
+      formatter: formatNumber
+    });
+    updateNutritionMetric({
+      valueEl: els.dashProteinValue,
+      targetEl: els.dashProteinTarget,
+      percentEl: els.dashProteinPercent,
+      barEl: els.dashProteinBar,
+      noteEl: els.dashProteinNote,
+      consumed: totals.protein,
+      target: proteinTarget,
+      unit: "g",
+      formatter: formatMacro
+    });
+    updateNutritionMetric({
+      valueEl: els.dietCaloriesValue,
+      targetEl: els.dietCaloriesTarget,
+      percentEl: els.dietCaloriesPercent,
+      barEl: els.dietCaloriesBar,
+      noteEl: els.dietCaloriesNote,
+      consumed: totals.calories,
+      target: calorieTarget,
+      unit: "kcal",
+      formatter: formatNumber
+    });
+    updateNutritionMetric({
+      valueEl: els.dietProteinValue,
+      targetEl: els.dietProteinTarget,
+      percentEl: els.dietProteinPercent,
+      barEl: els.dietProteinBar,
+      noteEl: els.dietProteinNote,
+      consumed: totals.protein,
+      target: proteinTarget,
+      unit: "g",
+      formatter: formatMacro
+    });
+
+    const itemLabel = `${logs.length} item`;
+    els.dietMealCount.textContent = itemLabel;
+    els.dietLogCount.textContent = `${logs.length} log`;
+
+    if (logs.length === 0) {
+      els.dashNutritionSummary.textContent = "Belum ada makanan tercatat hari ini.";
+      return;
+    }
+
+    const remainingCalories = round1(calorieTarget - totals.calories);
+    const remainingProtein = round1(proteinTarget - totals.protein);
+    let detail = `${logs.length} item · ${formatNumber(totals.calories)} kcal · ${formatMacro(totals.protein)} g protein. `;
+
+    if (remainingCalories <= 0 && remainingProtein <= 0) {
+      detail += "Target kalori dan protein sudah tercapai.";
+    } else if (remainingCalories <= 0) {
+      detail += `Kalori sudah penuh, sisa ${formatMacro(remainingProtein)} g protein.`;
+    } else if (remainingProtein <= 0) {
+      detail += `Protein sudah tercapai, sisa ${formatNumber(remainingCalories)} kcal.`;
+    } else {
+      detail += `Sisa ${formatNumber(remainingCalories)} kcal dan ${formatMacro(remainingProtein)} g protein.`;
+    }
+
+    els.dashNutritionSummary.textContent = detail;
+  }
+
+  function splitDetailMarkup(id) {
+    const split = getSplit(id) ?? SPLITS[0];
+    const isRest = split.id === 6;
+    const isActiveRest = split.id === 3;
+    const iconTone = isRest
+      ? "bg-slate-400/10 text-slate-300 ring-slate-400/20"
+      : isActiveRest
+        ? "bg-amber-400/10 text-amber-300 ring-amber-400/20"
+        : "bg-emerald-400/10 text-emerald-300 ring-emerald-400/20";
+
+    const tags = split.tags
+      .map((tag) => `<span class="rounded-lg border border-white/5 bg-white/[0.045] px-2 py-1 text-[10px] font-medium text-slate-400">${escapeHTML(tag)}</span>`)
+      .join("");
+
+    return `
+      <div class="flex items-start gap-3">
+        <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl ring-1 ring-inset ${iconTone}">
+          ${splitIcon(split.id, "h-5 w-5")}
+        </span>
+        <div class="min-w-0 flex-1">
+          <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">${escapeHTML(split.type)}</p>
+          <h4 class="mt-0.5 text-sm font-semibold leading-snug text-white">${escapeHTML(split.name)}</h4>
+          <p class="mt-1 text-[11px] leading-relaxed text-slate-400">${escapeHTML(split.description)}</p>
+        </div>
+      </div>
+      <div class="mt-3 flex flex-wrap gap-1.5">${tags}</div>
+    `;
+  }
+
+  function renderSplit() {
+    const splitId = getSelectedSplitId();
+    const split = getSplit(splitId) ?? SPLITS[0];
+    els.splitSelect.value = String(splitId);
+    els.splitDayBadge.textContent = split.day;
+    els.splitDetail.innerHTML = splitDetailMarkup(splitId);
+    if (els.workoutSplitSelect && document.activeElement !== els.workoutSplitSelect) {
+      els.workoutSplitSelect.value = String(splitId);
+    }
+  }
+
+  function getActiveExerciseInput() {
+    if (!els.workoutExerciseSelect) return "Squat";
+    const selected = els.workoutExerciseSelect.value;
+    if (selected === "__custom__") {
+      return els.workoutExerciseCustom?.value.trim() || "";
+    }
+    return selected;
+  }
+
+  function getExerciseBestBefore(exerciseName, excludeId = null) {
+    const norm = normalizeExerciseKey(exerciseName);
+    const baseline = getBaselinePR(exerciseName);
+    let bestLogged = 0;
+
+    if (norm && Array.isArray(state.workoutLogs)) {
+      state.workoutLogs.forEach((log) => {
+        if (excludeId && log.id === excludeId) return;
+        if (normalizeExerciseKey(log.exercise) === norm) {
+          bestLogged = Math.max(bestLogged, Number(log.weight) || 0);
+        }
+      });
+    }
+
+    const threshold = baseline !== null
+      ? Math.max(baseline, bestLogged)
+      : bestLogged > 0
+        ? bestLogged
+        : null;
+
+    return { baseline, bestLogged, threshold };
+  }
+
+  function isLogPR(log) {
+    if (!log) return false;
+    const baseline = getBaselinePR(log.exercise);
+    if (baseline !== null && Number(log.weight) > baseline) return true;
+    return Boolean(log.isPR);
+  }
+
+  function getTodayBodyNote() {
+    const key = todayKey();
+    return state.bodyNotes.find((item) => item.date === key) ?? {
+      date: key,
+      tags: [],
+      note: "",
+      updatedAt: null
+    };
+  }
+
+  function updateWorkoutLive1RM() {
+    if (!els.workoutEst1RM) return;
+    const exercise = getActiveExerciseInput();
+    const { baseline, bestLogged, threshold } = getExerciseBestBefore(exercise);
+
+    if (els.workoutPrBaselineHint) {
+      if (baseline !== null) {
+        const currentRecord = Math.max(baseline, bestLogged);
+        els.workoutPrBaselineHint.textContent = currentRecord > baseline
+          ? `Rekor: ${formatMacro(currentRecord)} kg (Base ${formatMacro(baseline)} kg)`
+          : `Baseline: ${formatMacro(baseline)} kg`;
+      } else if (bestLogged > 0) {
+        els.workoutPrBaselineHint.textContent = `Rekor: ${formatMacro(bestLogged)} kg`;
+      } else {
+        els.workoutPrBaselineHint.textContent = exercise ? "Target PR Baru" : "Pilih Gerakan";
+      }
+    }
+
+    const weight = validNumber(els.workoutWeight?.value, 0.5, 600);
+    const reps = validNumber(els.workoutReps?.value, 1, 100);
+    const sets = validNumber(els.workoutSets?.value, 1, 30) ?? 1;
+
+    if (weight === null || reps === null) {
+      els.workoutEst1RM.textContent = "0,0";
+      els.workoutVolumePreview.textContent = "Masukkan beban & repetisi";
+      if (els.workoutLivePrBadge) els.workoutLivePrBadge.hidden = true;
+      if (els.workout1RMBox) {
+        els.workout1RMBox.classList.remove("border-amber-400/40", "bg-amber-400/[0.06]");
+        els.workout1RMBox.classList.add("border-emerald-400/20", "bg-slate-950/50");
+      }
+      return;
+    }
+
+    const est1RM = calculateEpley1RM(weight, reps);
+    const totalVolume = Math.round(weight * sets * reps);
+    const isPRCandidate = threshold !== null && weight > threshold;
+
+    els.workoutEst1RM.textContent = formatWeight(est1RM);
+    els.workoutVolumePreview.textContent = `${formatMacro(weight)} × (1 + ${Math.round(reps)}/30) · Vol ${formatNumber(totalVolume)} kg`;
+
+    if (els.workoutLivePrBadge) {
+      els.workoutLivePrBadge.hidden = !isPRCandidate;
+    }
+    if (els.workout1RMBox) {
+      els.workout1RMBox.classList.toggle("border-amber-400/40", isPRCandidate);
+      els.workout1RMBox.classList.toggle("bg-amber-400/[0.06]", isPRCandidate);
+      els.workout1RMBox.classList.toggle("border-emerald-400/20", !isPRCandidate);
+      els.workout1RMBox.classList.toggle("bg-slate-950/50", !isPRCandidate);
+    }
+  }
+
+  function updateCardioAutoCalories() {
+    if (!els.cardioDuration || !els.cardioCalories || cardioCaloriesManual) return;
+    const duration = validNumber(els.cardioDuration.value, 1, 600);
+    if (duration === null) {
+      els.cardioCalories.value = "";
+      return;
+    }
+    const activity = els.cardioActivity?.value || CARDIO_ACTIVITIES[0];
+    const rate = CARDIO_KCAL_PER_MIN[activity] ?? 8;
+    els.cardioCalories.value = String(Math.round(duration * rate));
+  }
+
+  function renderBodyNoteTags() {
+    if (!els.bodyNoteTags) return;
+    const todayNote = getTodayBodyNote();
+    const activeTags = new Set(todayNote.tags);
+
+    els.bodyNoteTags.innerHTML = BODY_NOTE_TAGS
+      .map((tag) => {
+        const selected = activeTags.has(tag);
+        return `
+          <button type="button" data-body-tag="${escapeHTML(tag)}" class="body-tag-btn ${selected ? "is-selected" : ""}" aria-pressed="${selected}">
+            ${selected ? "✓ " : "+ "}${escapeHTML(tag)}
+          </button>
+        `;
+      })
+      .join("");
+
+    if (els.bodyNotesInput && document.activeElement !== els.bodyNotesInput) {
+      els.bodyNotesInput.value = todayNote.note || "";
+    }
+
+    if (els.bodyNotesStatus) {
+      const hasContent = todayNote.tags.length > 0 || Boolean(todayNote.note);
+      els.bodyNotesStatus.textContent = hasContent ? "Tersimpan hari ini" : "Hari ini";
+      els.bodyNotesStatus.className = hasContent
+        ? "shrink-0 rounded-full border border-amber-400/25 bg-amber-400/10 px-2.5 py-1 text-[10px] font-semibold text-amber-300"
+        : "shrink-0 rounded-full bg-white/5 px-2.5 py-1 text-[10px] font-semibold text-slate-400";
+    }
+  }
+
+  function renderWorkoutHistory() {
+    if (!els.workoutHistoryList) return;
+
+    const totalPRs = state.workoutLogs.filter((log) => isLogPR(log)).length;
+    if (els.workoutPrCountBadge) {
+      els.workoutPrCountBadge.innerHTML = `
+        <span class="h-1.5 w-1.5 rounded-full bg-amber-400"></span>
+        <span>${formatNumber(totalPRs)} PR</span>
+      `;
+    }
+
+    const datesSet = new Set();
+    state.workoutLogs.forEach((item) => datesSet.add(item.date));
+    state.cardioLogs.forEach((item) => datesSet.add(item.date));
+    state.bodyNotes.forEach((item) => {
+      if ((item.tags && item.tags.length > 0) || item.note) {
+        datesSet.add(item.date);
+      }
+    });
+
+    const sortedDates = [...datesSet].sort((a, b) => b.localeCompare(a));
+    if (els.workoutHistoryCount) {
+      const totalItems = state.workoutLogs.length + state.cardioLogs.length;
+      els.workoutHistoryCount.textContent = `${formatNumber(sortedDates.length)} hari · ${formatNumber(totalItems)} log`;
+    }
+
+    if (sortedDates.length === 0) {
+      els.workoutHistoryList.innerHTML = `
+        <div class="flex items-start gap-3 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-4">
+          <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/[0.04] text-slate-500">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4" aria-hidden="true">
+              <path d="m6.5 6.5 11 11M3 10l7-7M14 21l7-7M3 14l3-3M18 22l4-4M2 6l4-4"/>
+            </svg>
+          </span>
+          <div class="min-w-0">
+            <p class="text-xs font-semibold text-slate-300">Belum ada riwayat latihan tercatat</p>
+            <p class="mt-1 text-[10px] leading-relaxed text-slate-500">Catat angkatan beban, sesi cardio/active recovery, atau kondisi fisik di atas. Badge <span class="font-bold text-amber-300">PR!</span> akan menyala otomatis saat angkatan melewati baseline (mis. Squat &gt; 140 kg atau Deadlift &gt; 192 kg).</p>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    els.workoutHistoryList.innerHTML = sortedDates
+      .map((date) => {
+        const dayWorkouts = state.workoutLogs
+          .filter((item) => item.date === date)
+          .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+        const dayCardios = state.cardioLogs
+          .filter((item) => item.date === date)
+          .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+        const dayBodyNote = state.bodyNotes.find((item) => item.date === date);
+
+        const isToday = date === todayKey();
+        const dateLabel = capitalize(dateFormatter.format(parseDateKey(date)));
+        const dayHasPR = dayWorkouts.some((item) => isLogPR(item));
+        const splitIdForDay = dayWorkouts[0]?.splitId ?? state.selectedSplits[date] ?? null;
+        const splitForDay = splitIdForDay ? getSplit(splitIdForDay) : null;
+
+        const bodyNoteMarkup = dayBodyNote && (dayBodyNote.tags.length > 0 || dayBodyNote.note)
+          ? `
+            <div class="mt-3 rounded-2xl border border-amber-400/20 bg-amber-400/[0.05] p-3">
+              <div class="flex items-center justify-between gap-2">
+                <p class="text-[10px] font-bold uppercase tracking-wider text-amber-300">Body &amp; Joint Notes</p>
+                <button type="button" data-delete-body-note="${escapeHTML(date)}" class="text-[10px] font-medium text-slate-500 transition hover:text-rose-300" aria-label="Hapus catatan fisik tanggal ${escapeHTML(dateLabel)}">Hapus</button>
+              </div>
+              ${dayBodyNote.tags.length > 0
+                ? `<div class="mt-2 flex flex-wrap gap-1.5">
+                    ${dayBodyNote.tags.map((tag) => `<span class="rounded-lg border border-amber-400/25 bg-amber-400/10 px-2 py-0.5 text-[10px] font-semibold text-amber-200">${escapeHTML(tag)}</span>`).join("")}
+                  </div>`
+                : ""}
+              ${dayBodyNote.note
+                ? `<p class="mt-2 text-[11px] leading-relaxed text-slate-300">${escapeHTML(dayBodyNote.note)}</p>`
+                : ""}
+            </div>
+          `
+          : "";
+
+        const workoutsMarkup = dayWorkouts
+          .map((log) => {
+            const pr = isLogPR(log);
+            const baseline = getBaselinePR(log.exercise);
+            const splitObj = getSplit(log.splitId);
+            const prDiff = baseline !== null && log.weight > baseline
+              ? `+${formatMacro(round1(log.weight - baseline))} kg dari baseline ${formatMacro(baseline)} kg`
+              : "Rekor angkatan terbaik baru!";
+
+            return `
+              <div class="flex items-start gap-3 rounded-2xl border ${pr ? "border-amber-400/35 bg-amber-400/[0.045]" : "border-white/5 bg-slate-950/40"} p-3.5">
+                <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl ${pr ? "bg-amber-400/15 text-amber-300 ring-1 ring-inset ring-amber-400/30" : "bg-emerald-400/10 text-emerald-300 ring-1 ring-inset ring-emerald-400/15"}">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4" aria-hidden="true">
+                    <path d="m6.5 6.5 11 11M3 10l7-7M14 21l7-7M3 14l3-3M18 22l4-4M2 6l4-4"/>
+                  </svg>
+                </span>
+                <div class="min-w-0 flex-1">
+                  <div class="flex flex-wrap items-center gap-1.5">
+                    <h5 class="text-xs font-semibold text-white">${escapeHTML(log.exercise)}</h5>
+                    ${splitObj ? `<span class="rounded-md border border-white/10 bg-white/5 px-1.5 py-0.5 text-[9px] font-semibold text-slate-400">${escapeHTML(splitObj.day)}</span>` : ""}
+                    ${pr ? `<span class="pr-badge" title="${escapeHTML(prDiff)}">★ PR!</span>` : ""}
+                  </div>
+                  <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+                    <span class="font-mono font-bold text-white">${formatMacro(log.weight)} kg</span>
+                    <span class="font-mono text-slate-300">${formatNumber(log.sets)} set &times; ${formatNumber(log.reps)} rep</span>
+                    <span class="rounded-md bg-white/5 px-1.5 py-0.5 font-mono text-[10px] text-slate-400">RPE ${formatMacro(log.rpe)}</span>
+                    <span class="font-mono text-[10px] font-semibold text-emerald-300">Est. 1RM ${formatWeight(log.est1RM)} kg</span>
+                  </div>
+                  ${pr ? `<p class="mt-1 text-[10px] font-medium text-amber-300/90">${escapeHTML(prDiff)}</p>` : ""}
+                </div>
+                <button type="button" data-delete-workout="${escapeHTML(log.id)}" class="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-slate-600 transition hover:bg-rose-400/10 hover:text-rose-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/60" aria-label="Hapus log ${escapeHTML(log.exercise)}">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4" aria-hidden="true">
+                    <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/>
+                  </svg>
+                </button>
+              </div>
+            `;
+          })
+          .join("");
+
+        const cardiosMarkup = dayCardios
+          .map((cardio) => `
+            <div class="flex items-center gap-3 rounded-2xl border border-cyan-400/15 bg-cyan-400/[0.04] p-3.5">
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-cyan-400/10 text-cyan-300 ring-1 ring-inset ring-cyan-400/20">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4" aria-hidden="true">
+                  <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                </svg>
+              </span>
+              <div class="min-w-0 flex-1">
+                <div class="flex flex-wrap items-center gap-1.5">
+                  <h5 class="text-xs font-semibold text-white">${escapeHTML(cardio.activity)}</h5>
+                  <span class="rounded-md border border-cyan-400/20 bg-cyan-400/10 px-1.5 py-0.5 text-[9px] font-semibold text-cyan-300">Cardio</span>
+                </div>
+                <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px]">
+                  <span class="font-mono font-semibold text-slate-200">${formatNumber(cardio.duration)} menit</span>
+                  <span class="font-mono text-cyan-300">~${formatNumber(cardio.calories)} kcal terbakar</span>
+                </div>
+              </div>
+              <button type="button" data-delete-cardio="${escapeHTML(cardio.id)}" class="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-slate-600 transition hover:bg-rose-400/10 hover:text-rose-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/60" aria-label="Hapus cardio ${escapeHTML(cardio.activity)}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4" aria-hidden="true">
+                  <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/>
+                </svg>
+              </button>
+            </div>
+          `)
+          .join("");
+
+        return `
+          <article class="glass-card p-4 sm:p-5">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-white/5 pb-3">
+              <div class="flex flex-wrap items-center gap-2">
+                <h4 class="text-xs font-bold text-white">${escapeHTML(dateLabel)}</h4>
+                ${isToday ? `<span class="rounded-md bg-emerald-400/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-300">Hari ini</span>` : ""}
+              </div>
+              <div class="flex items-center gap-1.5">
+                ${dayHasPR ? `<span class="pr-badge">★ PR!</span>` : ""}
+                ${splitForDay ? `<span class="rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-[10px] font-semibold text-slate-300">${escapeHTML(splitForDay.day)}</span>` : ""}
+              </div>
+            </div>
+
+            ${bodyNoteMarkup}
+
+            ${workoutsMarkup ? `<div class="mt-3 space-y-2.5">${workoutsMarkup}</div>` : ""}
+            ${cardiosMarkup ? `<div class="mt-2.5 space-y-2.5">${cardiosMarkup}</div>` : ""}
+          </article>
+        `;
+      })
+      .join("");
+  }
+
+  function renderWorkout() {
+    const splitId = getSelectedSplitId();
+    els.workoutTodayDay.textContent = getSplit(splitId)?.day ?? "Day 1";
+    els.workoutToday.innerHTML = splitDetailMarkup(splitId);
+
+    if (els.workoutSplitSelect && document.activeElement !== els.workoutSplitSelect) {
+      els.workoutSplitSelect.value = String(splitId);
+    }
+
+    els.workoutSplitList.innerHTML = SPLITS
+      .map((split) => {
+        const isActive = split.id === splitId;
+        const tags = split.tags
+          .map((tag) => `<span class="rounded-md border border-white/5 bg-white/[0.04] px-1.5 py-0.5 text-[9px] font-medium text-slate-400">${escapeHTML(tag)}</span>`)
+          .join("");
+
+        return `
+          <article class="rounded-2xl border p-4 transition ${isActive ? "border-emerald-400/35 bg-emerald-400/[0.055]" : "border-white/5 bg-slate-950/30"}">
+            <div class="flex items-start gap-3">
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-[11px] font-bold ${isActive ? "bg-emerald-400/15 text-emerald-300 ring-1 ring-inset ring-emerald-400/20" : "bg-white/[0.045] text-slate-500 ring-1 ring-inset ring-white/5"}">
+                ${pad(split.id)}
+              </span>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-start justify-between gap-2">
+                  <div class="min-w-0">
+                    <p class="text-[10px] font-bold uppercase tracking-wider ${isActive ? "text-emerald-400" : "text-slate-500"}">${split.day}</p>
+                    <h4 class="mt-0.5 text-xs font-semibold leading-snug text-white">${escapeHTML(split.name)}</h4>
+                  </div>
+                  ${isActive
+                    ? `<span class="shrink-0 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-emerald-300">Aktif</span>`
+                    : `<button type="button" data-select-split="${split.id}" class="shrink-0 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-[10px] font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60">Pilih</button>`}
+                </div>
+                <p class="mt-1.5 text-[10px] leading-relaxed text-slate-500">${escapeHTML(split.description)}</p>
+                <div class="mt-2 flex flex-wrap gap-1">${tags}</div>
+              </div>
+            </div>
+          </article>
+        `;
+      })
+      .join("");
+
+    updateWorkoutLive1RM();
+    renderBodyNoteTags();
+    renderWorkoutHistory();
+  }
+
+  function renderFoodList() {
+    const logs = getTodayFoodLogs();
+
+    if (logs.length === 0) {
+      els.foodList.innerHTML = `
+        <div class="flex items-start gap-3 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-4">
+          <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/[0.04] text-slate-500">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4" aria-hidden="true">
+              <path d="M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-12.22A4.91 4.91 0 0 0 17 5c-2.22 0-4 1.44-5 2-1-.56-2.78-2-5-2a4.9 4.9 0 0 0-5 4.78C2 14 5 22 8 22c1.25 0 2.5-1.06 4-1.06Z"/><path d="M10 2c1 .5 2 2 2 5"/>
+            </svg>
+          </span>
+          <div class="min-w-0">
+            <p class="text-xs font-semibold text-slate-300">Belum ada log makanan</p>
+            <p class="mt-1 text-[10px] leading-relaxed text-slate-500">Gunakan Quick Add Meal Prep atau Custom Food Input di atas. Dashboard akan langsung diperbarui.</p>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    els.foodList.innerHTML = logs
+      .map((log) => {
+        const time = formatTime(log.createdAt);
+        return `
+          <article class="flex items-center gap-3 rounded-2xl border border-white/5 bg-slate-950/30 p-3.5">
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-blue-400/10 text-blue-300 ring-1 ring-inset ring-blue-400/15">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4" aria-hidden="true">
+                <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v8h5Z"/><path d="M21 15v7"/>
+              </svg>
+            </span>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center justify-between gap-2">
+                <h4 class="truncate text-xs font-semibold text-white">${escapeHTML(log.name)}</h4>
+                ${time ? `<span class="shrink-0 font-mono text-[9px] text-slate-600">${escapeHTML(time)}</span>` : ""}
+              </div>
+              <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px]">
+                <span class="font-medium text-slate-400">${formatNumber(log.calories)} kcal</span>
+                <span class="font-medium text-emerald-300/80">${formatMacro(log.protein)} g protein</span>
+              </div>
+            </div>
+            <button type="button" data-delete-food="${escapeHTML(log.id)}" class="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-slate-600 transition hover:bg-rose-400/10 hover:text-rose-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/60" aria-label="Hapus ${escapeHTML(log.name)}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4" aria-hidden="true">
+                <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/>
+              </svg>
+            </button>
+          </article>
+        `;
+      })
+      .join("");
+  }
+
+  function analyticsStatCard(label, value, unit, detail, tone = "slate") {
+    const valueTone = tone === "emerald"
+      ? "text-emerald-300"
+      : tone === "blue"
+        ? "text-blue-300"
+        : "text-white";
+    return `
+      <article class="glass-card p-4">
+        <p class="text-[10px] font-medium uppercase tracking-wider text-slate-500">${label}</p>
+        <p class="mt-1.5 font-mono text-[1.35rem] font-semibold leading-none tracking-tight ${valueTone}">${value}<span class="ml-1 text-[10px] font-medium text-slate-500">${unit}</span></p>
+        <p class="mt-2 text-[9px] leading-relaxed text-slate-500">${detail}</p>
+      </article>
+    `;
+  }
+
+  function isAnalyticsVisible() {
+    return Boolean(els.analyticsView && !els.analyticsView.hidden);
+  }
+
+  function destroyAnalyticsCharts() {
+    if (bodyweightChartInstance) {
+      bodyweightChartInstance.destroy();
+      bodyweightChartInstance = null;
+    }
+    if (strengthChartInstance) {
+      strengthChartInstance.destroy();
+      strengthChartInstance = null;
+    }
+  }
+
+  function refreshAnalyticsChartsSoon() {
+    if (analyticsChartFrame) window.cancelAnimationFrame(analyticsChartFrame);
+    analyticsChartFrame = window.requestAnimationFrame(() => {
+      analyticsChartFrame = null;
+      renderAnalyticsCharts();
+    });
+  }
+
+  function bodyweightAreaGradient(context) {
+    const { ctx, chartArea } = context.chart;
+    if (!chartArea) return "rgba(52, 211, 153, 0.12)";
+    const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+    gradient.addColorStop(0, "rgba(52, 211, 153, 0.28)");
+    gradient.addColorStop(1, "rgba(52, 211, 153, 0)");
+    return gradient;
+  }
+
+  function chartTooltipOptions() {
+    return {
+      backgroundColor: "rgba(2, 6, 23, 0.95)",
+      borderColor: "rgba(148, 163, 184, 0.22)",
+      borderWidth: 1,
+      titleColor: "#e2e8f0",
+      bodyColor: "#cbd5e1",
+      padding: 10,
+      cornerRadius: 10,
+      titleFont: { size: 10, family: '"Plus Jakarta Sans", sans-serif', weight: "700" },
+      bodyFont: { size: 10, family: '"JetBrains Mono", monospace', weight: "600" },
+      displayColors: false
+    };
+  }
+
+  function renderAnalyticsCharts() {
+    destroyAnalyticsCharts();
+    if (!isAnalyticsVisible()) return;
+
+    const ChartLib = window.Chart;
+    if (!ChartLib) return;
+
+    ChartLib.defaults.font.family = '"Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif';
+    ChartLib.defaults.color = "#64748b";
+
+    const weightCanvas = document.getElementById("analytics-bodyweight-chart");
+    if (weightCanvas) {
+      const entries = state.weights
+        .slice(-30)
+        .filter((entry) => Number.isFinite(Number(entry.weight)));
+      const labels = entries.map((entry) => formatChartDate(entry.date));
+      const values = entries.map((entry) => round1(entry.weight));
+      const target = state.profile.targetWeight;
+      const anchored = [...values, target];
+      const low = Math.min(...anchored);
+      const high = Math.max(...anchored);
+      const padding = Math.max((high - low) * 0.2, 0.8);
+
+      bodyweightChartInstance = new ChartLib(weightCanvas, {
+        type: "line",
+        data: {
+          labels,
+          datasets: [
+            {
+              label: "Bodyweight",
+              data: values,
+              borderColor: "#34d399",
+              backgroundColor: bodyweightAreaGradient,
+              borderWidth: 2.4,
+              pointRadius: values.length > 16 ? 0 : 3,
+              pointHoverRadius: 5,
+              pointBackgroundColor: "#0f172a",
+              pointBorderColor: "#34d399",
+              pointBorderWidth: 2,
+              tension: 0.32,
+              fill: true
+            },
+            {
+              label: `Target ${formatNumber(target)} kg`,
+              data: labels.map(() => target),
+              borderColor: "#38bdf8",
+              borderWidth: 1.4,
+              borderDash: [6, 5],
+              pointRadius: 0,
+              pointHoverRadius: 0,
+              tension: 0,
+              fill: false
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: { duration: 520 },
+          interaction: { mode: "index", intersect: false },
+          layout: { padding: { top: 4, right: 4 } },
+          plugins: {
+            legend: {
+              display: true,
+              position: "top",
+              align: "end",
+              labels: {
+                color: "#94a3b8",
+                boxWidth: 12,
+                boxHeight: 2,
+                padding: 12,
+                font: { size: 9, weight: "600" }
+              }
+            },
+            tooltip: {
+              ...chartTooltipOptions(),
+              callbacks: {
+                label(context) {
+                  if (context.datasetIndex === 1) {
+                    return `Target: ${formatWeight(context.parsed.y)} kg`;
+                  }
+                  return `Berat: ${formatWeight(context.parsed.y)} kg`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              border: { display: false },
+              ticks: {
+                color: "#64748b",
+                maxRotation: 0,
+                autoSkip: true,
+                maxTicksLimit: 6,
+                font: { size: 9 }
+              }
+            },
+            y: {
+              suggestedMin: round1(low - padding),
+              suggestedMax: round1(high + padding),
+              grid: { color: "rgba(148, 163, 184, 0.08)" },
+              border: { display: false },
+              ticks: {
+                color: "#64748b",
+                maxTicksLimit: 5,
+                font: { size: 9 },
+                callback: (value) => `${formatWeight(value)}`
+              }
+            }
+          }
+        }
+      });
+    }
+
+    const strengthCanvas = document.getElementById("analytics-strength-chart");
+    if (strengthCanvas) {
+      const weeks = getStrengthWeeklyData(strengthFilter);
+      const labels = weeks.map((week) => formatChartDate(week.week));
+
+      strengthChartInstance = new ChartLib(strengthCanvas, {
+        type: "line",
+        data: {
+          labels,
+          datasets: [
+            {
+              label: "Top Set",
+              data: weeks.map((week) => round1(week.topSet)),
+              borderColor: "#34d399",
+              backgroundColor: "rgba(52, 211, 153, 0.1)",
+              borderWidth: 2.2,
+              pointRadius: 3,
+              pointHoverRadius: 5,
+              pointBackgroundColor: "#0f172a",
+              pointBorderColor: "#34d399",
+              pointBorderWidth: 2,
+              tension: 0.3,
+              fill: true
+            },
+            {
+              label: "Estimated 1RM",
+              data: weeks.map((week) => round1(week.e1rm)),
+              borderColor: "#38bdf8",
+              backgroundColor: "rgba(56, 189, 248, 0.08)",
+              borderWidth: 1.8,
+              borderDash: [5, 4],
+              pointRadius: 2.5,
+              pointHoverRadius: 4.5,
+              pointBackgroundColor: "#0f172a",
+              pointBorderColor: "#38bdf8",
+              pointBorderWidth: 2,
+              tension: 0.3,
+              fill: false
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: { duration: 520 },
+          interaction: { mode: "index", intersect: false },
+          layout: { padding: { top: 4, right: 4 } },
+          plugins: {
+            legend: {
+              display: true,
+              position: "top",
+              align: "end",
+              labels: {
+                color: "#94a3b8",
+                boxWidth: 12,
+                boxHeight: 2,
+                padding: 12,
+                font: { size: 9, weight: "600" }
+              }
+            },
+            tooltip: {
+              ...chartTooltipOptions(),
+              callbacks: {
+                label(context) {
+                  return `${context.dataset.label}: ${formatWeight(context.parsed.y)} kg`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              border: { display: false },
+              ticks: {
+                color: "#64748b",
+                maxRotation: 0,
+                autoSkip: true,
+                maxTicksLimit: 6,
+                font: { size: 9 }
+              }
+            },
+            y: {
+              grid: { color: "rgba(148, 163, 184, 0.08)" },
+              border: { display: false },
+              ticks: {
+                color: "#64748b",
+                maxTicksLimit: 5,
+                font: { size: 9 },
+                callback: (value) => `${formatWeight(value)} kg`
+              }
+            }
+          }
+        }
+      });
+    }
+  }
+
+  function renderAnalytics() {
+    if (analyticsChartFrame) {
+      window.cancelAnimationFrame(analyticsChartFrame);
+      analyticsChartFrame = null;
+    }
+    destroyAnalyticsCharts();
+
+    const latest = getLatestWeightEntry();
+    const progress = getWeightProgress();
+    const startDifference = round1(latest.weight - progress.startWeight);
+    const changeDetail = Math.abs(startDifference) < 0.05
+      ? "Belum ada perubahan dari berat awal"
+      : startDifference < 0
+        ? `Turun ${formatWeight(Math.abs(startDifference))} kg dari berat awal`
+        : `Naik ${formatWeight(startDifference)} kg dari berat awal`;
+
+    const weekKeys = lastNDays(7);
+    const weekData = weekKeys.map((key) => {
+      const logs = getFoodLogsFor(key);
+      return { key, logs, totals: sumNutrition(logs) };
+    });
+    const loggedDays = weekData.filter((day) => day.logs.length > 0);
+    const averageCalories = loggedDays.length
+      ? loggedDays.reduce((total, day) => total + day.totals.calories, 0) / loggedDays.length
+      : 0;
+    const averageProtein = loggedDays.length
+      ? loggedDays.reduce((total, day) => total + day.totals.protein, 0) / loggedDays.length
+      : 0;
+
+    const weightEntries = state.weights.slice(-30);
+    const hasChartJs = typeof window.Chart === "function";
+    const hasWeightTrend = weightEntries.length > 1;
+    const weightChartMarkup = hasChartJs && hasWeightTrend
+      ? `<div class="chart-canvas-wrap">
+          <canvas id="analytics-bodyweight-chart" role="img" aria-label="Grafik tren berat badan menuju target ${formatNumber(progress.targetWeight)} kilogram"></canvas>
+        </div>`
+      : buildWeightChart(weightEntries.slice(-14), {
+        width: 600,
+        height: 168,
+        gradientId: "analytics"
+      });
+
+    const strengthWeeks = getStrengthWeeklyData(strengthFilter);
+    const strengthSummary = getStrengthSummary(strengthFilter);
+    const strengthLogs = getStrengthLogsForFilter(strengthFilter);
+    const latestStrength = strengthLogs[0] ?? null;
+    const exerciseOptions = STRENGTH_EXERCISES
+      .map((exercise) => `<option value="${escapeHTML(exercise)}"${exercise === strengthFilter ? " selected" : ""}>${escapeHTML(exercise)}</option>`)
+      .join("");
+
+    let strengthChartMarkup;
+    if (!hasChartJs) {
+      strengthChartMarkup = `
+        <div class="chart-empty">
+          Grafik interaktif membutuhkan Chart.js. Muat aplikasi sekali dengan koneksi internet agar grafik tersedia offline.
+        </div>
+      `;
+    } else if (strengthWeeks.length === 0) {
+      strengthChartMarkup = `
+        <div class="chart-empty flex-col gap-2.5">
+          <span>Belum ada data ${escapeHTML(strengthFilter)}. Catat set pertamamu dari tab Workout untuk memulai grafik mingguan.</span>
+          <button type="button" data-go-tab="workout" class="rounded-lg border border-emerald-400/25 bg-emerald-400/10 px-2.5 py-1.5 text-[10px] font-semibold text-emerald-300 transition hover:bg-emerald-400/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60">
+            Catat di Workout
+          </button>
+        </div>
+      `;
+    } else {
+      strengthChartMarkup = `
+        <div class="chart-canvas-wrap">
+          <canvas id="analytics-strength-chart" role="img" aria-label="Grafik progres ${escapeHTML(strengthFilter)}: top set dan estimated 1RM per minggu"></canvas>
+        </div>
+      `;
+    }
+
+    const latestStrengthMarkup = latestStrength
+      ? `<p class="mt-3 border-t border-white/5 pt-3 text-[10px] leading-relaxed text-slate-500">
+          Terakhir: <span class="font-mono font-semibold text-slate-300">${formatMacro(latestStrength.weight)} kg × ${formatNumber(latestStrength.reps)}</span>
+          · ${escapeHTML(formatStrengthDate(latestStrength.date))}
+          · e1RM <span class="font-mono font-semibold text-blue-300">${formatWeight(latestStrength.est1RM)} kg</span>
+        </p>`
+      : "";
+
+    const weekRows = weekData
+      .map((day) => {
+        const hasLogs = day.logs.length > 0;
+        const caloriePercent = state.profile.calorieTarget > 0
+          ? clamp((day.totals.calories / state.profile.calorieTarget) * 100, 0, 100)
+          : 0;
+        const proteinPercent = state.profile.proteinTarget > 0
+          ? clamp((day.totals.protein / state.profile.proteinTarget) * 100, 0, 100)
+          : 0;
+        const isToday = day.key === todayKey();
+        const detail = hasLogs
+          ? `${formatNumber(day.totals.calories)} kcal · ${formatMacro(day.totals.protein)} g`
+          : "Tidak ada log";
+
+        return `
+          <div class="border-b border-white/5 py-3.5 first:pt-0 last:border-0 last:pb-0">
+            <div class="flex items-center justify-between gap-3">
+              <div class="flex items-center gap-2">
+                <span class="text-[10px] font-semibold ${isToday ? "text-emerald-300" : "text-slate-400"}">${escapeHTML(formatShortDay(day.key))}</span>
+                ${isToday ? `<span class="rounded-md bg-emerald-400/10 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-emerald-300">Hari ini</span>` : ""}
+              </div>
+              <span class="text-[9px] ${hasLogs ? "text-slate-400" : "text-slate-600"}">${detail}</span>
+            </div>
+            <div class="mt-2 space-y-1">
+              <div class="h-1.5 overflow-hidden rounded-full bg-slate-950/60" role="progressbar" aria-label="Kalori ${escapeHTML(formatShortDay(day.key))}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(caloriePercent)}">
+                <div class="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-400" style="width: ${caloriePercent}%"></div>
+              </div>
+              <div class="h-1.5 overflow-hidden rounded-full bg-slate-950/60" role="progressbar" aria-label="Protein ${escapeHTML(formatShortDay(day.key))}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(proteinPercent)}">
+                <div class="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-300" style="width: ${proteinPercent}%"></div>
+              </div>
+            </div>
+          </div>
+        `;
+      })
+      .join("");
+
+    els.analyticsContent.innerHTML = `
+      <div class="grid grid-cols-2 gap-3">
+        ${analyticsStatCard("Berat saat ini", formatWeight(latest.weight), "kg", changeDetail, "emerald")}
+        ${analyticsStatCard("Sisa ke target", formatWeight(progress.remaining), "kg", `Target ${formatNumber(progress.targetWeight)} kg`, "blue")}
+        ${analyticsStatCard("Kalori 7D", formatNumber(averageCalories), "kcal", `${loggedDays.length} dari 7 hari tercatat`)}
+        ${analyticsStatCard("Protein 7D", formatMacro(averageProtein), "g", `${loggedDays.length} dari 7 hari tercatat`)}
+      </div>
+
+      <article class="glass-card p-5 sm:p-6">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <h3 class="text-sm font-semibold text-white">Bodyweight Trend</h3>
+            <p class="mt-0.5 text-[11px] text-slate-400">${hasWeightTrend ? `${Math.min(weightEntries.length, 30)} catatan terakhir · garis target ${formatNumber(progress.targetWeight)} kg` : "Butuh minimal 2 catatan"}</p>
+          </div>
+          <span class="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-semibold text-emerald-300">${state.weights.length} data</span>
+        </div>
+        <div class="mt-4">${weightChartMarkup}</div>
+        <div class="mt-3 flex items-center justify-between border-t border-white/5 pt-3 text-[10px]">
+          <span class="text-slate-500">Awal <span class="font-semibold text-slate-300">${formatWeight(progress.startWeight)} kg</span></span>
+          <span class="text-slate-500">Sekarang <span class="font-semibold text-emerald-300">${formatWeight(progress.current)} kg</span></span>
+        </div>
+      </article>
+
+      <article class="glass-card p-5 sm:p-6">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <h3 class="text-sm font-semibold text-white">Strength Progression</h3>
+            <p class="mt-0.5 text-[11px] text-slate-400">Top set & estimated 1RM per minggu</p>
+          </div>
+          <span class="rounded-full border border-blue-400/20 bg-blue-400/10 px-2.5 py-1 text-[10px] font-semibold text-blue-300">${formatNumber(strengthSummary.totalSets)} set</span>
+        </div>
+
+        <label for="strength-filter" class="sr-only">Filter gerakan strength</label>
+        <div class="relative mt-3">
+          <select id="strength-filter" class="select-field">${exerciseOptions}</select>
+        </div>
+
+        <div class="mt-3 grid grid-cols-2 gap-2">
+          <div class="rounded-xl border border-emerald-400/15 bg-emerald-400/[0.04] px-3 py-2.5">
+            <p class="text-[9px] font-medium uppercase tracking-wider text-slate-500">Top Set terbaik</p>
+            <p class="mt-1 font-mono text-sm font-semibold text-emerald-300">${strengthSummary.totalSets > 0 ? formatWeight(strengthSummary.bestTopSet) : "—"}<span class="ml-1 text-[9px] font-medium text-slate-500">kg</span></p>
+          </div>
+          <div class="rounded-xl border border-blue-400/15 bg-blue-400/[0.04] px-3 py-2.5">
+            <p class="text-[9px] font-medium uppercase tracking-wider text-slate-500">e1RM terbaik</p>
+            <p class="mt-1 font-mono text-sm font-semibold text-blue-300">${strengthSummary.totalSets > 0 ? formatWeight(strengthSummary.bestE1rm) : "—"}<span class="ml-1 text-[9px] font-medium text-slate-500">kg</span></p>
+          </div>
+        </div>
+
+        <div class="mt-4">${strengthChartMarkup}</div>
+        ${latestStrengthMarkup}
+        <p class="mt-2 text-[9px] leading-relaxed text-slate-500">Estimated 1RM memakai rumus Epley: beban × (1 + reps / 30). Grafik menampilkan maksimal 12 minggu terakhir.</p>
+      </article>
+
+      <article class="glass-card p-5 sm:p-6">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <h3 class="text-sm font-semibold text-white">Asupan 7 Hari</h3>
+            <p class="mt-0.5 text-[11px] text-slate-400">Dibanding target harian</p>
+          </div>
+          <div class="flex items-center gap-2.5 text-[9px] text-slate-500">
+            <span class="inline-flex items-center gap-1"><span class="h-1.5 w-3 rounded-full bg-blue-400"></span>Kalori</span>
+            <span class="inline-flex items-center gap-1"><span class="h-1.5 w-3 rounded-full bg-emerald-400"></span>Protein</span>
+          </div>
+        </div>
+        <div class="mt-3">${weekRows}</div>
+      </article>
+
+      <div class="flex items-start gap-2.5 rounded-2xl border border-white/5 bg-white/[0.025] px-4 py-3">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="mt-0.5 h-4 w-4 shrink-0 text-slate-500" aria-hidden="true">
+          <circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>
+        </svg>
+        <p class="text-[10px] leading-relaxed text-slate-500">Rata-rata kalori dan protein hanya menghitung hari yang memiliki log makanan. Data strength diambil dari Workout Log; minggu dimulai hari Senin.</p>
+      </div>
+    `;
+
+    refreshAnalyticsChartsSoon();
+  }
+
+  function renderDataSummary() {
+    const weightCount = state.weights.length;
+    const foodCount = state.foodLogs.length;
+    const workoutCount = state.workoutLogs.length + state.cardioLogs.length;
+    els.dataSummary.textContent = `${formatNumber(weightCount)} catatan berat · ${formatNumber(foodCount)} log makanan · ${formatNumber(workoutCount)} log latihan`;
+  }
+
+  function renderAll() {
+    renderDates();
+    renderWeightCard();
+    renderNutrition();
+    renderSplit();
+    renderWorkout();
+    renderFoodList();
+    renderAnalytics();
+    renderDataSummary();
+  }
+
+  function cacheElements() {
+    els.todayDates = [...document.querySelectorAll("[data-today-date]")];
+    els.navButtons = [...document.querySelectorAll("[data-tab-target]")];
+    els.views = [...document.querySelectorAll("[data-view]")];
+
+    els.openSettings = document.getElementById("open-settings");
+    els.settingsModal = document.getElementById("settings-modal");
+    els.settingsBackdrop = document.getElementById("settings-backdrop");
+    els.closeSettings = document.getElementById("close-settings");
+    els.exportData = document.getElementById("export-data");
+    els.importData = document.getElementById("import-data");
+    els.importFile = document.getElementById("import-file");
+    els.dataSummary = document.getElementById("data-summary");
+    els.settingsForm = document.getElementById("settings-form");
+    els.settingTargetWeight = document.getElementById("setting-target-weight");
+    els.settingCalorieTarget = document.getElementById("setting-calorie-target");
+    els.settingProteinTarget = document.getElementById("setting-protein-target");
+
+    els.currentWeight = document.getElementById("current-weight");
+    els.targetWeight = document.getElementById("target-weight");
+    els.targetWeightSide = document.getElementById("target-weight-side");
+    els.weightChangeBadge = document.getElementById("weight-change-badge");
+    els.weightProgressLabel = document.getElementById("weight-progress-label");
+    els.weightProgressBar = document.getElementById("weight-progress-bar");
+    els.weightRemaining = document.getElementById("weight-remaining");
+    els.weightStart = document.getElementById("weight-start");
+    els.weightTrendLabel = document.getElementById("weight-trend-label");
+    els.weightChart = document.getElementById("weight-chart");
+    els.weightForm = document.getElementById("weight-form");
+    els.weightInput = document.getElementById("weight-input");
+    els.weightSavedStatus = document.getElementById("weight-saved-status");
+
+    els.dashCaloriesValue = document.getElementById("dash-calories-value");
+    els.dashCaloriesTarget = document.getElementById("dash-calories-target");
+    els.dashCaloriesPercent = document.getElementById("dash-calories-percent");
+    els.dashCaloriesBar = document.getElementById("dash-calories-bar");
+    els.dashCaloriesNote = document.getElementById("dash-calories-note");
+    els.dashProteinValue = document.getElementById("dash-protein-value");
+    els.dashProteinTarget = document.getElementById("dash-protein-target");
+    els.dashProteinPercent = document.getElementById("dash-protein-percent");
+    els.dashProteinBar = document.getElementById("dash-protein-bar");
+    els.dashProteinNote = document.getElementById("dash-protein-note");
+    els.dashNutritionSummary = document.getElementById("dash-nutrition-summary");
+
+    els.splitSelect = document.getElementById("split-select");
+    els.splitDetail = document.getElementById("split-detail");
+    els.splitDayBadge = document.getElementById("split-day-badge");
+
+    els.workoutTodayDay = document.getElementById("workout-today-day");
+    els.workoutToday = document.getElementById("workout-today");
+    els.workoutSplitList = document.getElementById("workout-split-list");
+    els.workoutPrCountBadge = document.getElementById("workout-pr-count-badge");
+    els.workoutSplitSelect = document.getElementById("workout-split-select");
+    els.workoutForm = document.getElementById("workout-form");
+    els.workoutExerciseSelect = document.getElementById("workout-exercise-select");
+    els.workoutExerciseCustomWrap = document.getElementById("workout-custom-exercise-wrap");
+    els.workoutExerciseCustom = document.getElementById("workout-exercise-custom");
+    els.workoutWeight = document.getElementById("workout-weight");
+    els.workoutSets = document.getElementById("workout-sets");
+    els.workoutReps = document.getElementById("workout-reps");
+    els.workoutRpe = document.getElementById("workout-rpe");
+    els.workout1RMBox = document.getElementById("workout-1rm-box");
+    els.workoutLivePrBadge = document.getElementById("workout-live-pr-badge");
+    els.workoutEst1RM = document.getElementById("workout-est-1rm");
+    els.workoutVolumePreview = document.getElementById("workout-volume-preview");
+    els.workoutPrBaselineHint = document.getElementById("workout-pr-baseline-hint");
+    els.workoutHistoryCount = document.getElementById("workout-history-count");
+    els.workoutHistoryList = document.getElementById("workout-history-list");
+
+    els.cardioForm = document.getElementById("cardio-form");
+    els.cardioActivity = document.getElementById("cardio-activity");
+    els.cardioDuration = document.getElementById("cardio-duration");
+    els.cardioCalories = document.getElementById("cardio-calories");
+
+    els.bodyNotesForm = document.getElementById("body-notes-form");
+    els.bodyNotesInput = document.getElementById("body-notes-input");
+    els.bodyNoteTags = document.getElementById("body-note-tags");
+    els.bodyNotesStatus = document.getElementById("body-notes-status");
+    els.workoutCustomExerciseWrap = els.workoutExerciseCustomWrap;
+
+    els.dietMealCount = document.getElementById("diet-meal-count");
+    els.dietCaloriesValue = document.getElementById("diet-calories-value");
+    els.dietCaloriesTarget = document.getElementById("diet-calories-target");
+    els.dietCaloriesPercent = document.getElementById("diet-calories-percent");
+    els.dietCaloriesBar = document.getElementById("diet-calories-bar");
+    els.dietCaloriesNote = document.getElementById("diet-calories-note");
+    els.dietProteinValue = document.getElementById("diet-protein-value");
+    els.dietProteinTarget = document.getElementById("diet-protein-target");
+    els.dietProteinPercent = document.getElementById("diet-protein-percent");
+    els.dietProteinBar = document.getElementById("diet-protein-bar");
+    els.dietProteinNote = document.getElementById("diet-protein-note");
+    els.quickMealGrid = document.getElementById("quick-meal-grid");
+    els.foodForm = document.getElementById("food-form");
+    els.foodName = document.getElementById("food-name");
+    els.foodCalories = document.getElementById("food-calories");
+    els.foodProtein = document.getElementById("food-protein");
+    els.foodList = document.getElementById("food-list");
+    els.dietLogCount = document.getElementById("diet-log-count");
+
+    els.analyticsContent = document.getElementById("analytics-content");
+    els.analyticsView = document.getElementById("view-analytics");
+    els.toast = document.getElementById("toast");
+    els.toastMessage = document.getElementById("toast-message");
+
+    els.authGate = document.getElementById("auth-gate");
+    els.authTitle = document.getElementById("auth-title");
+    els.authSubtitle = document.getElementById("auth-subtitle");
+    els.authModeBadge = document.getElementById("auth-mode-badge");
+    els.authFeedback = document.getElementById("auth-feedback");
+    els.authForm = document.getElementById("auth-form");
+    els.authEmail = document.getElementById("auth-email");
+    els.authPassword = document.getElementById("auth-password");
+    els.authSubmitBtn = document.getElementById("auth-submit-btn");
+    els.authSubmitLabel = document.getElementById("auth-submit-label");
+    els.authTogglePrompt = document.getElementById("auth-toggle-prompt");
+    els.authToggleBtn = document.getElementById("auth-toggle-btn");
+
+    els.userEmailDisplay = document.getElementById("user-email-display");
+    els.syncStatusBadge = document.getElementById("sync-status-badge");
+    els.syncStatusDot = document.getElementById("sync-status-dot");
+    els.syncStatusText = document.getElementById("sync-status-text");
+    els.logoutBtn = document.getElementById("logout-btn");
+  }
+
+  function showToast(message, type = "success") {
+    if (!els.toast || !els.toastMessage) return;
+    window.clearTimeout(toastTimer);
+    els.toastMessage.textContent = message;
+    els.toast.dataset.type = type;
+    els.toast.classList.add("show");
+    toastTimer = window.setTimeout(() => {
+      els.toast.classList.remove("show");
+    }, 2800);
+  }
+
+  function setActiveTab(tab, options = {}) {
+    const target = TAB_IDS.includes(tab) ? tab : "dashboard";
+    const updateHash = options.updateHash ?? true;
+    const shouldScroll = options.scroll ?? true;
+
+    els.views.forEach((view) => {
+      view.hidden = view.dataset.view !== target;
+    });
+
+    els.navButtons.forEach((button) => {
+      const isActive = button.dataset.tabTarget === target;
+      button.classList.toggle("active", isActive);
+      button.setAttribute("aria-selected", String(isActive));
+      button.tabIndex = isActive ? 0 : -1;
+    });
+
+    if (updateHash) {
+      const nextHash = `#${target}`;
+      if (window.location.hash !== nextHash) {
+        window.history.replaceState(null, "", nextHash);
+      }
+    }
+
+    document.title = `${TAB_TITLES[target]} · PowerBuild Tracker`;
+    if (target === "analytics") refreshAnalyticsChartsSoon();
+    if (shouldScroll) window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
+  function goToTab(tab, options = {}) {
+    setActiveTab(tab);
+    if (options.focusField && tab === "diet") {
+      window.setTimeout(() => els.foodName?.focus(), 280);
+    }
+  }
+
+  function populateSettingsForm() {
+    els.settingTargetWeight.value = String(state.profile.targetWeight);
+    els.settingCalorieTarget.value = String(state.profile.calorieTarget);
+    els.settingProteinTarget.value = String(state.profile.proteinTarget);
+  }
+
+  function openSettings() {
+    lastFocusedElement = document.activeElement;
+    populateSettingsForm();
+    renderDataSummary();
+    els.settingsModal.hidden = false;
+    els.openSettings.setAttribute("aria-expanded", "true");
+    document.body.classList.add("modal-open");
+    window.setTimeout(() => els.exportData?.focus(), 40);
+  }
+
+  function closeSettings() {
+    if (!els.settingsModal || els.settingsModal.hidden) return;
+    els.settingsModal.hidden = true;
+    els.openSettings.setAttribute("aria-expanded", "false");
+    document.body.classList.remove("modal-open");
+    if (lastFocusedElement instanceof HTMLElement) lastFocusedElement.focus();
+    lastFocusedElement = null;
+  }
+
+  function trapModalFocus(event) {
+    if (event.key !== "Tab" || els.settingsModal.hidden) return;
+    const focusable = [...els.settingsModal.querySelectorAll(
+      'button:not([disabled]), input:not([type="hidden"]):not([disabled]), select:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
+    )].filter((element) => element.offsetParent !== null);
+
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
+  function handleWeightSubmit(event) {
+    event.preventDefault();
+    const weight = validNumber(els.weightInput.value, 30, 300);
+
+    if (weight === null) {
+      showToast("Masukkan berat antara 30–300 kg.", "error");
+      els.weightInput.focus();
+      return;
+    }
+
+    const key = todayKey();
+    const existing = state.weights.find((entry) => entry.date === key);
+    const now = new Date().toISOString();
+
+    if (existing) {
+      existing.weight = round1(weight);
+      existing.updatedAt = now;
+    } else {
+      state.weights.push({
+        date: key,
+        weight: round1(weight),
+        updatedAt: now
+      });
+    }
+
+    state.weights.sort((a, b) => a.date.localeCompare(b.date));
+    persistState();
+    renderWeightCard();
+    renderAnalytics();
+    renderDataSummary();
+    els.weightInput.blur();
+    showToast(`Berat ${formatWeight(weight)} kg tersimpan.`);
+  }
+
+  function applySplit(id) {
+    const split = getSplit(id);
+    if (!split) return;
+    state.selectedSplits[todayKey()] = split.id;
+    persistState();
+    renderSplit();
+    renderWorkout();
+    showToast(`${split.day} dipilih untuk hari ini.`);
+  }
+
+  function refreshFoodViews() {
+    renderNutrition();
+    renderFoodList();
+    renderAnalytics();
+    renderDataSummary();
+  }
+
+  function addFoodEntry({ name, calories, protein }) {
+    const cleanName = typeof name === "string" ? name.trim().slice(0, 80) : "";
+    const validCalories = validNumber(calories, 0, 20000);
+    const validProtein = validNumber(protein, 0, 1000);
+
+    if (!cleanName || validCalories === null || validProtein === null) return false;
+
+    state.foodLogs.push({
+      id: uid(),
+      date: todayKey(),
+      name: cleanName,
+      calories: Math.round(validCalories),
+      protein: round1(validProtein),
+      createdAt: new Date().toISOString()
+    });
+
+    persistState();
+    refreshFoodViews();
+    return true;
+  }
+
+  function handleQuickMealClick(event) {
+    const button = event.target.closest("[data-quick-meal-index]");
+    if (!button) return;
+
+    const meal = QUICK_MEALS[Number(button.dataset.quickMealIndex)];
+    if (!meal) return;
+
+    if (!addFoodEntry(meal)) {
+      showToast("Gagal menambahkan meal prep.", "error");
+      return;
+    }
+
+    button.classList.add("is-added");
+    window.setTimeout(() => button.classList.remove("is-added"), 520);
+    showToast(`+${meal.name} · ${formatNumber(meal.calories)} kcal, ${formatMacro(meal.protein)} g protein`);
+  }
+
+  function handleFoodSubmit(event) {
+    event.preventDefault();
+    const name = els.foodName.value.trim();
+    const calories = validNumber(els.foodCalories.value, 0, 20000);
+    const protein = validNumber(els.foodProtein.value, 0, 1000);
+
+    if (!name) {
+      showToast("Nama makanan tidak boleh kosong.", "error");
+      els.foodName.focus();
+      return;
+    }
+    if (calories === null || protein === null) {
+      showToast("Kalori atau protein belum valid.", "error");
+      return;
+    }
+
+    if (!addFoodEntry({ name, calories, protein })) {
+      showToast("Gagal menambahkan makanan.", "error");
+      return;
+    }
+
+    els.foodForm.reset();
+    els.foodName.focus();
+    showToast("Makanan custom ditambahkan ke log hari ini.");
+  }
+
+  function handleFoodDelete(event) {
+    const button = event.target.closest("[data-delete-food]");
+    if (!button) return;
+
+    const id = button.dataset.deleteFood;
+    const log = state.foodLogs.find((item) => item.id === id);
+    if (!log) return;
+
+    if (!window.confirm(`Hapus "${log.name}" dari log hari ini?`)) return;
+
+    state.foodLogs = state.foodLogs.filter((item) => item.id !== id);
+    persistState();
+    refreshFoodViews();
+    showToast("Log makanan dihapus.");
+  }
+
+  function handleExerciseSelectChange() {
+    if (!els.workoutExerciseSelect || !els.workoutCustomExerciseWrap) return;
+    const isCustom = els.workoutExerciseSelect.value === "__custom__";
+    els.workoutCustomExerciseWrap.hidden = !isCustom;
+    if (isCustom) {
+      els.workoutExerciseCustom?.focus();
+    }
+    updateWorkoutLive1RM();
+  }
+
+  function syncPendingBodyNoteText() {
+    if (!els.bodyNotesInput) return;
+    const typedNote = els.bodyNotesInput.value.trim().slice(0, 200);
+    if (!typedNote) return;
+
+    const key = todayKey();
+    const existing = state.bodyNotes.find((item) => item.date === key);
+    if (existing) {
+      if (existing.note !== typedNote) {
+        existing.note = typedNote;
+        existing.updatedAt = new Date().toISOString();
+      }
+    } else {
+      state.bodyNotes.unshift({
+        date: key,
+        tags: [],
+        note: typedNote,
+        updatedAt: new Date().toISOString()
+      });
+    }
+  }
+
+  function handleWorkoutSubmit(event) {
+    event.preventDefault();
+    const splitId = Number(els.workoutSplitSelect?.value) || getSelectedSplitId();
+    const isCustom = els.workoutExerciseSelect?.value === "__custom__";
+    const exercise = (isCustom ? els.workoutExerciseCustom?.value : els.workoutExerciseSelect?.value || "")
+      .trim()
+      .slice(0, 80);
+
+    if (!exercise) {
+      showToast("Pilih atau ketik nama gerakan terlebih dahulu.", "error");
+      if (isCustom) els.workoutExerciseCustom?.focus();
+      return;
+    }
+
+    const weight = validNumber(els.workoutWeight?.value, 0.5, 600);
+    const sets = validNumber(els.workoutSets?.value, 1, 30);
+    const reps = validNumber(els.workoutReps?.value, 1, 100);
+    const rpe = validNumber(els.workoutRpe?.value, 6, 10);
+
+    if (weight === null) {
+      showToast("Masukkan beban angkatan yang valid (0,5–600 kg).", "error");
+      els.workoutWeight?.focus();
+      return;
+    }
+    if (sets === null || reps === null) {
+      showToast("Jumlah Sets (1–30) dan Reps (1–100) harus valid.", "error");
+      return;
+    }
+    if (rpe === null) {
+      showToast("Masukkan nilai RPE pada skala 6–10.", "error");
+      els.workoutRpe?.focus();
+      return;
+    }
+
+    const { threshold } = getExerciseBestBefore(exercise);
+    const isPR = threshold !== null && weight > threshold;
+    const est1RM = calculateEpley1RM(weight, reps);
+    const today = todayKey();
+
+    state.selectedSplits[today] = splitId;
+    syncPendingBodyNoteText();
+
+    state.workoutLogs.push({
+      id: uid(),
+      date: today,
+      splitId,
+      exercise,
+      weight: round1(weight),
+      sets: Math.round(sets),
+      reps: Math.round(reps),
+      rpe: round1(rpe),
+      est1RM,
+      isPR,
+      createdAt: new Date().toISOString()
+    });
+
+    persistState();
+    els.workoutWeight.value = "";
+    if (isCustom && els.workoutExerciseCustom) {
+      els.workoutExerciseCustom.value = "";
+    }
+    renderSplit();
+    renderWorkout();
+    renderAnalytics();
+    renderDataSummary();
+
+    if (isPR) {
+      showToast(`PR BARU! ${exercise} ${formatMacro(weight)} kg · Est. 1RM ${formatWeight(est1RM)} kg`);
+    } else {
+      showToast(`Log ${exercise} (${formatMacro(weight)} kg × ${Math.round(sets)}×${Math.round(reps)}) tersimpan.`);
+    }
+  }
+
+  function handleCardioSubmit(event) {
+    event.preventDefault();
+    const activity = (els.cardioActivity?.value || CARDIO_ACTIVITIES[0]).trim().slice(0, 80);
+    const duration = validNumber(els.cardioDuration?.value, 1, 600);
+    const calories = validNumber(els.cardioCalories?.value, 1, 5000);
+
+    if (duration === null) {
+      showToast("Masukkan durasi cardio dalam menit (1–600).", "error");
+      els.cardioDuration?.focus();
+      return;
+    }
+    if (calories === null) {
+      showToast("Masukkan estimasi kalori terbakar (1–5000 kcal).", "error");
+      els.cardioCalories?.focus();
+      return;
+    }
+
+    syncPendingBodyNoteText();
+
+    state.cardioLogs.push({
+      id: uid(),
+      date: todayKey(),
+      activity,
+      duration: Math.round(duration),
+      calories: Math.round(calories),
+      createdAt: new Date().toISOString()
+    });
+
+    cardioCaloriesManual = false;
+    els.cardioDuration.value = "";
+    els.cardioCalories.value = "";
+
+    persistState();
+    renderWorkout();
+    renderDataSummary();
+    showToast(`${activity} (${Math.round(duration)} menit · ${formatNumber(calories)} kcal) tersimpan.`);
+  }
+
+  function handleBodyTagClick(event) {
+    const button = event.target.closest("[data-body-tag]");
+    if (!button) return;
+
+    const tag = button.dataset.bodyTag;
+    if (!tag) return;
+
+    const key = todayKey();
+    let entry = state.bodyNotes.find((item) => item.date === key);
+    if (!entry) {
+      entry = {
+        date: key,
+        tags: [],
+        note: els.bodyNotesInput?.value.trim().slice(0, 200) || "",
+        updatedAt: new Date().toISOString()
+      };
+      state.bodyNotes.unshift(entry);
+    }
+
+    if (entry.tags.includes(tag)) {
+      entry.tags = entry.tags.filter((item) => item !== tag);
+    } else {
+      entry.tags.push(tag);
+    }
+    entry.updatedAt = new Date().toISOString();
+
+    if (entry.tags.length === 0 && !entry.note) {
+      state.bodyNotes = state.bodyNotes.filter((item) => item.date !== key);
+    }
+
+    persistState();
+    renderWorkout();
+  }
+
+  function handleBodyNotesSubmit(event) {
+    event.preventDefault();
+    const key = todayKey();
+    const noteText = els.bodyNotesInput?.value.trim().slice(0, 200) || "";
+    const existing = state.bodyNotes.find((item) => item.date === key);
+    const currentTags = existing ? existing.tags : [];
+
+    if (!noteText && currentTags.length === 0) {
+      showToast("Pilih minimal 1 tag cepat atau isi catatan kondisi fisik.", "error");
+      els.bodyNotesInput?.focus();
+      return;
+    }
+
+    if (existing) {
+      existing.note = noteText;
+      existing.updatedAt = new Date().toISOString();
+    } else {
+      state.bodyNotes.unshift({
+        date: key,
+        tags: [],
+        note: noteText,
+        updatedAt: new Date().toISOString()
+      });
+    }
+
+    persistState();
+    renderWorkout();
+    showToast("Body & Joint Notes hari ini tersimpan.");
+  }
+
+  function handleWorkoutHistoryClick(event) {
+    const deleteWorkoutBtn = event.target.closest("[data-delete-workout]");
+    if (deleteWorkoutBtn) {
+      const id = deleteWorkoutBtn.dataset.deleteWorkout;
+      const log = state.workoutLogs.find((item) => item.id === id);
+      if (!log) return;
+      if (!window.confirm(`Hapus log "${log.exercise} (${formatMacro(log.weight)} kg)"?`)) return;
+      state.workoutLogs = state.workoutLogs.filter((item) => item.id !== id);
+      persistState();
+      renderWorkout();
+      renderAnalytics();
+      renderDataSummary();
+      showToast("Log latihan beban dihapus.");
+      return;
+    }
+
+    const deleteCardioBtn = event.target.closest("[data-delete-cardio]");
+    if (deleteCardioBtn) {
+      const id = deleteCardioBtn.dataset.deleteCardio;
+      const log = state.cardioLogs.find((item) => item.id === id);
+      if (!log) return;
+      if (!window.confirm(`Hapus log cardio "${log.activity}"?`)) return;
+      state.cardioLogs = state.cardioLogs.filter((item) => item.id !== id);
+      persistState();
+      renderWorkout();
+      renderDataSummary();
+      showToast("Log cardio dihapus.");
+      return;
+    }
+
+    const deleteBodyNoteBtn = event.target.closest("[data-delete-body-note]");
+    if (deleteBodyNoteBtn) {
+      const date = deleteBodyNoteBtn.dataset.deleteBodyNote;
+      if (!window.confirm("Hapus Body & Joint Notes pada tanggal ini?")) return;
+      state.bodyNotes = state.bodyNotes.filter((item) => item.date !== date);
+      if (date === todayKey() && els.bodyNotesInput) {
+        els.bodyNotesInput.value = "";
+      }
+      persistState();
+      renderWorkout();
+      showToast("Catatan kondisi fisik dihapus.");
+    }
+  }
+  function handleSettingsSubmit(event) {
+    event.preventDefault();
+    const targetWeight = validNumber(els.settingTargetWeight.value, 30, 300);
+    const calorieTarget = validNumber(els.settingCalorieTarget.value, 800, 10000);
+    const proteinTarget = validNumber(els.settingProteinTarget.value, 30, 500);
+
+    if (targetWeight === null || calorieTarget === null || proteinTarget === null) {
+      showToast("Periksa kembali nilai target yang dimasukkan.", "error");
+      return;
+    }
+
+    state.profile.targetWeight = round1(targetWeight);
+    state.profile.calorieTarget = Math.round(calorieTarget);
+    state.profile.proteinTarget = round1(proteinTarget);
+
+    persistState();
+    renderAll();
+    populateSettingsForm();
+    closeSettings();
+    showToast("Target harian diperbarui.");
+  }
+
+  function exportData() {
+    try {
+      const payload = {
+        app: "PowerBuild Tracker",
+        version: STATE_VERSION,
+        exportedAt: new Date().toISOString(),
+        data: state
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `powerbuild-backup-${todayKey()}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1200);
+      showToast("Backup JSON berhasil diunduh.");
+    } catch (error) {
+      console.error("Export gagal:", error);
+      showToast("Gagal membuat file backup.", "error");
+    }
+  }
+
+  async function handleImportFile(file) {
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      showToast("File terlalu besar. Maksimal 5 MB.", "error");
+      els.importFile.value = "";
+      return;
+    }
+
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      const imported = sanitizeState(parsed, true);
+      const totalWorkouts = imported.workoutLogs.length + imported.cardioLogs.length;
+      const confirmed = window.confirm(
+        `Import akan mengganti data saat ini dengan ${imported.weights.length} catatan berat, ${imported.foodLogs.length} log makanan, dan ${totalWorkouts} log latihan. Lanjutkan?`
+      );
+
+      if (!confirmed) {
+        showToast("Import dibatalkan.");
+        return;
+      }
+
+      state = imported;
+      currentDay = todayKey();
+      persistState();
+      renderAll();
+      populateSettingsForm();
+      closeSettings();
+      showToast("Data berhasil diimport.");
+    } catch (error) {
+      console.error("Import gagal:", error);
+      const message = error instanceof SyntaxError
+        ? "File JSON tidak valid."
+        : error?.message || "Import gagal. Periksa format file backup.";
+      showToast(message, "error");
+    } finally {
+      els.importFile.value = "";
+    }
+  }
+
+  function clearAuthFeedback() {
+    if (!els.authFeedback) return;
+    els.authFeedback.hidden = true;
+    els.authFeedback.textContent = "";
+    delete els.authFeedback.dataset.tone;
+  }
+
+  function showAuthFeedback(message, tone = "error") {
+    if (!els.authFeedback) return;
+    els.authFeedback.textContent = message;
+    els.authFeedback.dataset.tone = tone;
+    els.authFeedback.hidden = false;
+  }
+
+  function translateAuthError(error) {
+    const raw = String(error?.message || error || "").toLowerCase();
+    if (raw.includes("invalid login credentials")) {
+      return "Password salah atau email belum terdaftar. Silakan periksa kembali.";
+    }
+    if (raw.includes("user already registered") || raw.includes("already been registered")) {
+      return "Email ini sudah terdaftar. Silakan beralih ke mode Masuk (Login).";
+    }
+    if (raw.includes("password should be at least")) {
+      return "Password minimal harus terdiri dari 6 karakter.";
+    }
+    if (raw.includes("email not confirmed")) {
+      return "Email belum dikonfirmasi. Cek kotak masuk email Anda atau matikan opsi Confirm Email di Supabase Dashboard.";
+    }
+    if (raw.includes("invalid email") || raw.includes("unable to validate email")) {
+      return "Format alamat email tidak valid.";
+    }
+    if (raw.includes("rate limit") || raw.includes("too many requests")) {
+      return "Terlalu banyak percobaan. Silakan tunggu beberapa saat lalu coba lagi.";
+    }
+    return error?.message || "Terjadi kesalahan autentikasi. Periksa koneksi internet Anda.";
+  }
+
+  function setAuthMode(mode, options = {}) {
+    authMode = mode === "register" ? "register" : "login";
+    if (!options.keepFeedback) clearAuthFeedback();
+
+    const isRegister = authMode === "register";
+    if (els.authTitle) {
+      els.authTitle.textContent = isRegister ? "Daftar Akun Baru" : "Masuk ke PowerBuild";
+    }
+    if (els.authSubtitle) {
+      els.authSubtitle.textContent = isRegister
+        ? "Buat akun baru menggunakan email dan password untuk menyimpan seluruh progres latihan Anda di cloud."
+        : "Masuk dengan akun email Anda untuk menyinkronkan riwayat berat badan, nutrisi, dan progres angkatan ke cloud secara otomatis.";
+    }
+    if (els.authSubmitLabel) {
+      els.authSubmitLabel.textContent = isRegister
+        ? "Daftar Akun Baru (Register)"
+        : "Masuk (Login)";
+    }
+    if (els.authTogglePrompt) {
+      els.authTogglePrompt.textContent = isRegister
+        ? "Sudah punya akun PowerBuild?"
+        : "Belum punya akun?";
+    }
+    if (els.authToggleBtn) {
+      els.authToggleBtn.textContent = isRegister
+        ? "Masuk ke Akun (Login)"
+        : "Daftar Akun Baru (Register)";
+    }
+    if (els.authPassword) {
+      els.authPassword.setAttribute("autocomplete", isRegister ? "new-password" : "current-password");
+    }
+  }
+
+  function setAuthBusy(busy) {
+    authBusy = Boolean(busy);
+    if (els.authSubmitBtn) els.authSubmitBtn.disabled = authBusy;
+    if (els.authToggleBtn) els.authToggleBtn.disabled = authBusy;
+    if (els.authEmail) els.authEmail.disabled = authBusy;
+    if (els.authPassword) els.authPassword.disabled = authBusy;
+    if (els.authSubmitLabel) {
+      if (authBusy) {
+        els.authSubmitLabel.textContent = "Memproses...";
+      } else {
+        els.authSubmitLabel.textContent = authMode === "register"
+          ? "Daftar Akun Baru (Register)"
+          : "Masuk (Login)";
+      }
+    }
+  }
+
+  function showAuthGate() {
+    if (!els.authGate) return;
+    els.authGate.hidden = false;
+    document.body.classList.add("auth-locked");
+  }
+
+  function hideAuthGate() {
+    if (!els.authGate) return;
+    els.authGate.hidden = true;
+    document.body.classList.remove("auth-locked");
+  }
+
+  async function loadUserDataFromCloud(user) {
+    if (!supabaseClient || !user) return;
+    currentUser = user;
+
+    if (els.userEmailDisplay) {
+      els.userEmailDisplay.textContent = user.email || "User Aktif";
+    }
+
+    isHydratingFromCloud = true;
+    setSyncStatus("saving", "Saving...");
+
+    try {
+      const { data, error } = await supabaseClient
+        .from(SUPABASE_TABLE)
+        .select("app_data, updated_at")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data && data.app_data && typeof data.app_data === "object") {
+        state = sanitizeState(data.app_data);
+        currentDay = todayKey();
+        persistState({ sync: false });
+        renderAll();
+        populateSettingsForm();
+        setSyncStatus("idle", "Cloud Synced");
+      } else {
+        // User baru di cloud: gunakan struktur data lokal/default lalu UPSERT ke Supabase
+        state = loadState();
+        currentDay = todayKey();
+        persistState({ sync: false });
+        renderAll();
+        populateSettingsForm();
+
+        const { error: upsertError } = await supabaseClient
+          .from(SUPABASE_TABLE)
+          .upsert(
+            {
+              user_id: user.id,
+              email: user.email || "",
+              app_data: state,
+              updated_at: new Date().toISOString()
+            },
+            { onConflict: "user_id" }
+          );
+
+        if (upsertError) throw upsertError;
+        setSyncStatus("idle", "Cloud Synced");
+      }
+    } catch (error) {
+      console.warn("Gagal memuat atau membuat data cloud:", error);
+      setSyncStatus("error", "Sync Error");
+      showToast("Data lokal dimuat (gagal terhubung ke tabel cloud).", "error");
+    } finally {
+      isHydratingFromCloud = false;
+    }
+  }
+
+  async function handleAuthSubmit(event) {
+    event.preventDefault();
+    if (authBusy) return;
+
+    if (!supabaseClient) {
+      showAuthFeedback("Supabase SDK belum siap. Periksa koneksi internet Anda lalu muat ulang halaman.", "error");
+      return;
+    }
+
+    const email = els.authEmail?.value.trim() || "";
+    const password = els.authPassword?.value || "";
+
+    if (!email || !email.includes("@")) {
+      showAuthFeedback("Masukkan alamat email yang valid.", "error");
+      els.authEmail?.focus();
+      return;
+    }
+
+    if (password.length < 6) {
+      showAuthFeedback("Password minimal harus terdiri dari 6 karakter.", "error");
+      els.authPassword?.focus();
+      return;
+    }
+
+    clearAuthFeedback();
+    setAuthBusy(true);
+
+    try {
+      if (authMode === "register") {
+        const { data, error } = await supabaseClient.auth.signUp({
+          email,
+          password
+        });
+
+        if (error) throw error;
+
+        if (data?.user && data?.session) {
+          // Inisialisasi baris data awal untuk user baru jika sesi langsung aktif
+          const initialState = createDefaultState();
+          await supabaseClient
+            .from(SUPABASE_TABLE)
+            .upsert(
+              {
+                user_id: data.user.id,
+                email: data.user.email || email,
+                app_data: initialState,
+                updated_at: new Date().toISOString()
+              },
+              { onConflict: "user_id" }
+            );
+          await supabaseClient.auth.signOut();
+        }
+
+        setAuthMode("login", { keepFeedback: true });
+        showAuthFeedback("Akun berhasil dibuat, silakan masuk.", "success");
+        els.authPassword?.focus();
+      } else {
+        const { data, error } = await supabaseClient.auth.signInWithPassword({
+          email,
+          password
+        });
+
+        if (error) throw error;
+
+        const signedInUser = data?.user ?? data?.session?.user;
+        if (!signedInUser) {
+          throw new Error("Sesi pengguna tidak ditemukan.");
+        }
+
+        showAuthFeedback("Berhasil masuk! Memuat data cloud...", "success");
+        await loadUserDataFromCloud(signedInUser);
+        hideAuthGate();
+        if (els.authPassword) els.authPassword.value = "";
+        clearAuthFeedback();
+        showToast(`Selamat datang, ${signedInUser.email}!`);
+      }
+    } catch (error) {
+      showAuthFeedback(translateAuthError(error), "error");
+    } finally {
+      setAuthBusy(false);
+    }
+  }
+
+  async function handleLogout() {
+    if (!window.confirm("Keluar dari akun ini? Data lokal di browser akan dibersihkan agar tetap aman.")) {
+      return;
+    }
+
+    window.clearTimeout(syncQueueTimer);
+
+    try {
+      if (supabaseClient) {
+        await supabaseClient.auth.signOut();
+      }
+    } catch (error) {
+      console.warn("Gagal sign out dari Supabase:", error);
+    }
+
+    currentUser = null;
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (error) {
+      console.warn("Gagal menghapus LocalStorage:", error);
+    }
+
+    state = createDefaultState();
+    currentDay = todayKey();
+    renderAll();
+    populateSettingsForm();
+
+    if (els.userEmailDisplay) {
+      els.userEmailDisplay.textContent = "Belum login";
+    }
+    setSyncStatus("idle", "Cloud Synced");
+    setAuthMode("login");
+    showAuthFeedback("Anda telah keluar. Silakan masuk kembali.", "info");
+    showAuthGate();
+    window.setTimeout(() => els.authEmail?.focus(), 60);
+  }
+
+  async function initSupabaseAuth() {
+    if (!globalThis.supabase || typeof globalThis.supabase.createClient !== "function") {
+      showAuthGate();
+      showAuthFeedback("Gagal memuat Supabase SDK dari CDN. Periksa koneksi internet Anda.", "error");
+      return;
+    }
+
+    const cleanKey = String(SUPABASE_ANON_KEY || "").replace(/^\[|\]$/g, "").trim();
+    supabaseClient = globalThis.supabase.createClient(SUPABASE_URL, cleanKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true
+      }
+    });
+
+    try {
+      const { data, error } = await supabaseClient.auth.getSession();
+      if (error) throw error;
+
+      const sessionUser = data?.session?.user ?? null;
+      if (sessionUser) {
+        hideAuthGate();
+        await loadUserDataFromCloud(sessionUser);
+      } else {
+        showAuthGate();
+      }
+    } catch (error) {
+      console.warn("Gagal memeriksa sesi Supabase:", error);
+      showAuthGate();
+    }
+
+    supabaseClient.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT") {
+        currentUser = null;
+        showAuthGate();
+      } else if (event === "TOKEN_REFRESHED" && session?.user) {
+        currentUser = session.user;
+      }
+    });
+  }
+
+  function checkDayRollover() {
+    const current = todayKey();
+    if (current === currentDay) return;
+    currentDay = current;
+    renderAll();
+    showToast("Hari baru dimulai. Data hari ini siap diisi.");
+  }
+
+  function bindEvents() {
+    els.authForm?.addEventListener("submit", handleAuthSubmit);
+    els.authToggleBtn?.addEventListener("click", () => {
+      setAuthMode(authMode === "login" ? "register" : "login");
+    });
+    els.logoutBtn?.addEventListener("click", handleLogout);
+
+    window.addEventListener("online", () => {
+      if (currentUser) scheduleCloudSync(true);
+    });
+    els.navButtons.forEach((button, index) => {
+      button.addEventListener("click", () => setActiveTab(button.dataset.tabTarget));
+      button.addEventListener("keydown", (event) => {
+        if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+        event.preventDefault();
+        const direction = event.key === "ArrowRight" ? 1 : -1;
+        const nextIndex = (index + direction + els.navButtons.length) % els.navButtons.length;
+        const nextButton = els.navButtons[nextIndex];
+        nextButton.focus();
+        setActiveTab(nextButton.dataset.tabTarget);
+      });
+    });
+
+    document.addEventListener("click", (event) => {
+      const trigger = event.target.closest("[data-go-tab]");
+      if (!trigger) return;
+      const tab = trigger.dataset.goTab;
+      goToTab(tab, { focusField: tab === "diet" });
+    });
+
+    els.weightForm.addEventListener("submit", handleWeightSubmit);
+    els.splitSelect.addEventListener("change", (event) => applySplit(event.target.value));
+
+    els.workoutSplitList.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-select-split]");
+      if (!button) return;
+      applySplit(button.dataset.selectSplit);
+    });
+
+    els.workoutSplitSelect?.addEventListener("change", (event) => applySplit(event.target.value));
+    els.workoutExerciseSelect?.addEventListener("change", handleExerciseSelectChange);
+    els.workoutExerciseCustom?.addEventListener("input", updateWorkoutLive1RM);
+    els.workoutWeight?.addEventListener("input", updateWorkoutLive1RM);
+    els.workoutSets?.addEventListener("input", updateWorkoutLive1RM);
+    els.workoutReps?.addEventListener("input", updateWorkoutLive1RM);
+    els.workoutForm?.addEventListener("submit", handleWorkoutSubmit);
+
+    els.cardioActivity?.addEventListener("change", updateCardioAutoCalories);
+    els.cardioDuration?.addEventListener("input", updateCardioAutoCalories);
+    els.cardioCalories?.addEventListener("input", () => {
+      cardioCaloriesManual = Boolean(els.cardioCalories.value.trim());
+    });
+    els.cardioForm?.addEventListener("submit", handleCardioSubmit);
+
+    els.bodyNoteTags?.addEventListener("click", handleBodyTagClick);
+    els.bodyNotesForm?.addEventListener("submit", handleBodyNotesSubmit);
+
+    els.workoutHistoryList?.addEventListener("click", handleWorkoutHistoryClick);
+
+    els.analyticsContent.addEventListener("change", (event) => {
+      if (event.target.id !== "strength-filter") return;
+      strengthFilter = STRENGTH_EXERCISES.includes(event.target.value)
+        ? event.target.value
+        : STRENGTH_EXERCISES[0];
+      renderAnalytics();
+    });
+
+    els.quickMealGrid.addEventListener("click", handleQuickMealClick);
+    els.foodForm.addEventListener("submit", handleFoodSubmit);
+    els.foodList.addEventListener("click", handleFoodDelete);
+
+    els.openSettings.addEventListener("click", openSettings);
+    els.closeSettings.addEventListener("click", closeSettings);
+    els.settingsBackdrop.addEventListener("click", closeSettings);
+    els.settingsForm.addEventListener("submit", handleSettingsSubmit);
+    els.exportData.addEventListener("click", exportData);
+    els.importData.addEventListener("click", () => els.importFile.click());
+    els.importFile.addEventListener("change", (event) => handleImportFile(event.target.files?.[0]));
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !els.settingsModal.hidden) {
+        closeSettings();
+        return;
+      }
+      trapModalFocus(event);
+    });
+
+    window.addEventListener("hashchange", () => {
+      const tab = window.location.hash.replace("#", "");
+      if (TAB_IDS.includes(tab)) setActiveTab(tab, { updateHash: false, scroll: true });
+    });
+
+    window.addEventListener("storage", (event) => {
+      if (event.key !== STORAGE_KEY || !event.newValue) return;
+      try {
+        state = sanitizeState(JSON.parse(event.newValue));
+        currentDay = todayKey();
+        renderAll();
+        populateSettingsForm();
+      } catch (error) {
+        console.warn("Data dari tab lain tidak dapat dimuat:", error);
+      }
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) checkDayRollover();
+    });
+
+    window.setInterval(checkDayRollover, 60000);
+  }
+
+  function registerServiceWorker() {
+    if (!("serviceWorker" in navigator) || window.location.protocol === "file:") return;
+
+    const register = () => {
+      navigator.serviceWorker.register("./sw.js").catch((error) => {
+        console.warn("Service Worker tidak dapat didaftarkan:", error);
+      });
+    };
+
+    if (document.readyState === "complete") {
+      register();
+    } else {
+      window.addEventListener("load", register, { once: true });
+    }
+  }
+
+  function init() {
+    currentDay = todayKey();
+    state = loadState();
+    cacheElements();
+    setAuthMode("login");
+    showAuthGate();
+    populateSplitSelect();
+    renderQuickMeals();
+    bindEvents();
+    renderAll();
+
+    const hashTab = window.location.hash.replace("#", "");
+    setActiveTab(TAB_IDS.includes(hashTab) ? hashTab : "dashboard", {
+      updateHash: true,
+      scroll: false
+    });
+
+    persistState({ sync: false });
+    initSupabaseAuth();
+    registerServiceWorker();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+
+
+
+})();
