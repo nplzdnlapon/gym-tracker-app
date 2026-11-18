@@ -2772,11 +2772,21 @@
     els.authFeedback = document.getElementById("auth-feedback");
     els.authForm = document.getElementById("auth-form");
     els.authEmail = document.getElementById("auth-email");
+    els.authPasswordGroup = document.getElementById("auth-password-group");
     els.authPassword = document.getElementById("auth-password");
+    els.authForgotWrap = document.getElementById("auth-forgot-wrap");
+    els.authForgotBtn = document.getElementById("auth-forgot-btn");
     els.authSubmitBtn = document.getElementById("auth-submit-btn");
     els.authSubmitLabel = document.getElementById("auth-submit-label");
     els.authTogglePrompt = document.getElementById("auth-toggle-prompt");
     els.authToggleBtn = document.getElementById("auth-toggle-btn");
+
+    els.passwordRecoveryModal = document.getElementById("password-recovery-modal");
+    els.passwordRecoveryForm = document.getElementById("password-recovery-form");
+    els.recoveryNewPassword = document.getElementById("recovery-new-password");
+    els.recoverySubmitBtn = document.getElementById("recovery-submit-btn");
+    els.recoverySubmitLabel = document.getElementById("recovery-submit-label");
+    els.recoveryFeedback = document.getElementById("recovery-feedback");
 
     els.userEmailDisplay = document.getElementById("user-email-display");
     els.syncStatusBadge = document.getElementById("sync-status-badge");
@@ -3987,36 +3997,184 @@
     return error?.message || "Terjadi kesalahan autentikasi. Periksa koneksi internet Anda.";
   }
 
+  function resetPasswordVisibility(inputId) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    input.type = "password";
+    const toggleBtn = document.querySelector(`[data-toggle-password="${inputId}"]`);
+    if (!toggleBtn) return;
+    toggleBtn.setAttribute("aria-pressed", "false");
+    toggleBtn.setAttribute("aria-label", "Tampilkan password");
+    const eyeOpen = toggleBtn.querySelector("[data-eye-open]");
+    const eyeOff = toggleBtn.querySelector("[data-eye-off]");
+    if (eyeOpen) eyeOpen.hidden = false;
+    if (eyeOff) eyeOff.hidden = true;
+  }
+
+  function handlePasswordToggleClick(event) {
+    const toggleBtn = event.target.closest("[data-toggle-password]");
+    if (!toggleBtn) return;
+    const targetId = toggleBtn.dataset.togglePassword;
+    const input = targetId ? document.getElementById(targetId) : null;
+    if (!input) return;
+
+    const showPlain = input.type === "password";
+    input.type = showPlain ? "text" : "password";
+    toggleBtn.setAttribute("aria-pressed", String(showPlain));
+    toggleBtn.setAttribute("aria-label", showPlain ? "Sembunyikan password" : "Tampilkan password");
+
+    const eyeOpen = toggleBtn.querySelector("[data-eye-open]");
+    const eyeOff = toggleBtn.querySelector("[data-eye-off]");
+    if (eyeOpen) eyeOpen.hidden = showPlain;
+    if (eyeOff) eyeOff.hidden = !showPlain;
+    input.focus();
+  }
+
+  function clearRecoveryFeedback() {
+    if (!els.recoveryFeedback) return;
+    els.recoveryFeedback.hidden = true;
+    els.recoveryFeedback.textContent = "";
+    delete els.recoveryFeedback.dataset.tone;
+  }
+
+  function showRecoveryFeedback(message, tone = "error") {
+    if (!els.recoveryFeedback) return;
+    els.recoveryFeedback.textContent = message;
+    els.recoveryFeedback.dataset.tone = tone;
+    els.recoveryFeedback.hidden = false;
+  }
+
+  function openPasswordRecoveryModal() {
+    if (!els.passwordRecoveryModal) return;
+    clearRecoveryFeedback();
+    if (els.recoveryNewPassword) els.recoveryNewPassword.value = "";
+    resetPasswordVisibility("recovery-new-password");
+    els.passwordRecoveryModal.hidden = false;
+    document.body.classList.add("modal-open");
+    window.setTimeout(() => els.recoveryNewPassword?.focus(), 60);
+  }
+
+  function closePasswordRecoveryModal() {
+    if (!els.passwordRecoveryModal) return;
+    els.passwordRecoveryModal.hidden = true;
+    clearRecoveryFeedback();
+    if (els.recoveryNewPassword) els.recoveryNewPassword.value = "";
+    resetPasswordVisibility("recovery-new-password");
+    if (els.onboardingModal?.hidden !== false && els.settingsModal?.hidden !== false) {
+      document.body.classList.remove("modal-open");
+    }
+  }
+
+  async function handlePasswordRecoverySubmit(event) {
+    event.preventDefault();
+    if (!supabaseClient) {
+      showRecoveryFeedback("Supabase SDK belum siap. Periksa koneksi internet Anda.", "error");
+      return;
+    }
+
+    const newPassword = els.recoveryNewPassword?.value || "";
+    if (newPassword.length < 6) {
+      showRecoveryFeedback("Password baru minimal harus terdiri dari 6 karakter.", "error");
+      els.recoveryNewPassword?.focus();
+      return;
+    }
+
+    clearRecoveryFeedback();
+    if (els.recoverySubmitBtn) els.recoverySubmitBtn.disabled = true;
+    if (els.recoveryNewPassword) els.recoveryNewPassword.disabled = true;
+    if (els.recoverySubmitLabel) els.recoverySubmitLabel.textContent = "Menyimpan Password...";
+
+    try {
+      const { data, error } = await supabaseClient.auth.updateUser({
+        password: newPassword
+      });
+      if (error) throw error;
+
+      const updatedUser = data?.user ?? currentUser ?? (await supabaseClient.auth.getUser())?.data?.user ?? null;
+      closePasswordRecoveryModal();
+
+      if (window.location.hash.includes("type=recovery") || window.location.hash.includes("access_token")) {
+        window.history.replaceState(null, "", "#dashboard");
+      }
+
+      if (updatedUser) {
+        await loadUserDataFromCloud(updatedUser);
+      }
+      hideAuthGate();
+      setActiveTab("dashboard", { updateHash: true, scroll: true });
+      showToast("Password baru berhasil disimpan! Selamat datang di Dashboard.");
+    } catch (error) {
+      showRecoveryFeedback(translateAuthError(error), "error");
+    } finally {
+      if (els.recoverySubmitBtn) els.recoverySubmitBtn.disabled = false;
+      if (els.recoveryNewPassword) els.recoveryNewPassword.disabled = false;
+      if (els.recoverySubmitLabel) els.recoverySubmitLabel.textContent = "Simpan Password Baru";
+    }
+  }
+
   function setAuthMode(mode, options = {}) {
-    authMode = mode === "register" ? "register" : "login";
+    authMode = mode === "register" || mode === "forgot" ? mode : "login";
     if (!options.keepFeedback) clearAuthFeedback();
+    resetPasswordVisibility("auth-password");
 
     const isRegister = authMode === "register";
-    if (els.authTitle) {
-      els.authTitle.textContent = isRegister ? "Daftar · Gym Tracker App by LapoN" : "Gym Tracker App by LapoN";
-    }
-    if (els.authSubtitle) {
-      els.authSubtitle.textContent = isRegister
-        ? "Buat akun baru menggunakan email dan password untuk menyimpan seluruh progres latihan Anda di cloud."
-        : "Masuk dengan akun email Anda untuk menyinkronkan riwayat berat badan, nutrisi, dan progres angkatan ke cloud secara otomatis.";
-    }
-    if (els.authSubmitLabel) {
-      els.authSubmitLabel.textContent = isRegister
-        ? "Daftar Akun Baru (Register)"
-        : "Masuk (Login)";
-    }
-    if (els.authTogglePrompt) {
-      els.authTogglePrompt.textContent = isRegister
-        ? "Sudah punya akun Gym Tracker App by LapoN?"
-        : "Belum punya akun?";
-    }
-    if (els.authToggleBtn) {
-      els.authToggleBtn.textContent = isRegister
-        ? "Masuk ke Akun (Login)"
-        : "Daftar Akun Baru (Register)";
+    const isForgot = authMode === "forgot";
+
+    if (els.authPasswordGroup) {
+      els.authPasswordGroup.hidden = isForgot;
     }
     if (els.authPassword) {
+      els.authPassword.required = !isForgot;
       els.authPassword.setAttribute("autocomplete", isRegister ? "new-password" : "current-password");
+    }
+    if (els.authForgotWrap) {
+      els.authForgotWrap.hidden = authMode !== "login";
+    }
+
+    if (els.authTitle) {
+      if (isForgot) {
+        els.authTitle.textContent = "Reset Password · Gym Tracker App";
+      } else if (isRegister) {
+        els.authTitle.textContent = "Daftar · Gym Tracker App by LapoN";
+      } else {
+        els.authTitle.textContent = "Gym Tracker App by LapoN";
+      }
+    }
+    if (els.authSubtitle) {
+      if (isForgot) {
+        els.authSubtitle.textContent = "Masukkan alamat email akun Anda. Kami akan mengirimkan link pemulihan (recovery) untuk mengatur ulang password Anda.";
+      } else if (isRegister) {
+        els.authSubtitle.textContent = "Buat akun baru menggunakan email dan password untuk menyimpan seluruh progres latihan Anda di cloud.";
+      } else {
+        els.authSubtitle.textContent = "Masuk dengan akun email Anda untuk menyinkronkan riwayat berat badan, nutrisi, dan progres angkatan ke cloud secara otomatis.";
+      }
+    }
+    if (els.authSubmitLabel) {
+      if (isForgot) {
+        els.authSubmitLabel.textContent = "Kirim Link Recovery";
+      } else if (isRegister) {
+        els.authSubmitLabel.textContent = "Daftar Akun Baru (Register)";
+      } else {
+        els.authSubmitLabel.textContent = "Masuk (Login)";
+      }
+    }
+    if (els.authTogglePrompt) {
+      if (isForgot) {
+        els.authTogglePrompt.textContent = "Sudah ingat password Anda?";
+      } else if (isRegister) {
+        els.authTogglePrompt.textContent = "Sudah punya akun Gym Tracker App by LapoN?";
+      } else {
+        els.authTogglePrompt.textContent = "Belum punya akun?";
+      }
+    }
+    if (els.authToggleBtn) {
+      if (isForgot) {
+        els.authToggleBtn.textContent = "Kembali ke Masuk (Login)";
+      } else if (isRegister) {
+        els.authToggleBtn.textContent = "Masuk ke Akun (Login)";
+      } else {
+        els.authToggleBtn.textContent = "Daftar Akun Baru (Register)";
+      }
     }
   }
 
@@ -4024,15 +4182,18 @@
     authBusy = Boolean(busy);
     if (els.authSubmitBtn) els.authSubmitBtn.disabled = authBusy;
     if (els.authToggleBtn) els.authToggleBtn.disabled = authBusy;
+    if (els.authForgotBtn) els.authForgotBtn.disabled = authBusy;
     if (els.authEmail) els.authEmail.disabled = authBusy;
     if (els.authPassword) els.authPassword.disabled = authBusy;
     if (els.authSubmitLabel) {
       if (authBusy) {
         els.authSubmitLabel.textContent = "Memproses...";
+      } else if (authMode === "forgot") {
+        els.authSubmitLabel.textContent = "Kirim Link Recovery";
+      } else if (authMode === "register") {
+        els.authSubmitLabel.textContent = "Daftar Akun Baru (Register)";
       } else {
-        els.authSubmitLabel.textContent = authMode === "register"
-          ? "Daftar Akun Baru (Register)"
-          : "Masuk (Login)";
+        els.authSubmitLabel.textContent = "Masuk (Login)";
       }
     }
   }
@@ -4134,7 +4295,7 @@
       return;
     }
 
-    if (password.length < 6) {
+    if (authMode !== "forgot" && password.length < 6) {
       showAuthFeedback("Password minimal harus terdiri dari 6 karakter.", "error");
       els.authPassword?.focus();
       return;
@@ -4144,7 +4305,18 @@
     setAuthBusy(true);
 
     try {
-      if (authMode === "register") {
+      if (authMode === "forgot") {
+        const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+          redirectTo: window.location.origin
+        });
+
+        if (error) throw error;
+
+        showAuthFeedback(
+          "Link reset password telah dikirim! Silakan cek inbox atau folder spam email Anda.",
+          "success"
+        );
+      } else if (authMode === "register") {
         const { data, error } = await supabaseClient.auth.signUp({
           email,
           password
@@ -4189,6 +4361,7 @@
         await loadUserDataFromCloud(signedInUser);
         hideAuthGate();
         if (els.authPassword) els.authPassword.value = "";
+        resetPasswordVisibility("auth-password");
         clearAuthFeedback();
         showToast(`Selamat datang, ${signedInUser.email}!`);
       }
@@ -4224,6 +4397,7 @@
     state = createDefaultState();
     currentDay = todayKey();
     if (els.onboardingModal) els.onboardingModal.hidden = true;
+    closePasswordRecoveryModal();
     document.body.classList.remove("modal-open");
     renderAll();
     populateSettingsForm();
@@ -4245,6 +4419,10 @@
       return;
     }
 
+    const isRecoveryRedirect =
+      window.location.hash.includes("type=recovery") ||
+      window.location.search.includes("type=recovery");
+
     const cleanKey = String(SUPABASE_ANON_KEY || "").replace(/^\[|\]$/g, "").trim();
     supabaseClient = globalThis.supabase.createClient(SUPABASE_URL, cleanKey, {
       auth: {
@@ -4253,12 +4431,28 @@
       }
     });
 
+    supabaseClient.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY") {
+        if (session?.user) currentUser = session.user;
+        openPasswordRecoveryModal();
+      } else if (event === "SIGNED_OUT") {
+        currentUser = null;
+        closePasswordRecoveryModal();
+        showAuthGate();
+      } else if (event === "TOKEN_REFRESHED" && session?.user) {
+        currentUser = session.user;
+      }
+    });
+
     try {
       const { data, error } = await supabaseClient.auth.getSession();
       if (error) throw error;
 
       const sessionUser = data?.session?.user ?? null;
-      if (sessionUser) {
+      if (isRecoveryRedirect) {
+        if (sessionUser) currentUser = sessionUser;
+        openPasswordRecoveryModal();
+      } else if (sessionUser) {
         hideAuthGate();
         await loadUserDataFromCloud(sessionUser);
       } else {
@@ -4268,15 +4462,6 @@
       console.warn("Gagal memeriksa sesi Supabase:", error);
       showAuthGate();
     }
-
-    supabaseClient.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_OUT") {
-        currentUser = null;
-        showAuthGate();
-      } else if (event === "TOKEN_REFRESHED" && session?.user) {
-        currentUser = session.user;
-      }
-    });
   }
 
   function checkDayRollover() {
@@ -4292,6 +4477,12 @@
     els.authToggleBtn?.addEventListener("click", () => {
       setAuthMode(authMode === "login" ? "register" : "login");
     });
+    els.authForgotBtn?.addEventListener("click", () => {
+      setAuthMode("forgot");
+      els.authEmail?.focus();
+    });
+    els.passwordRecoveryForm?.addEventListener("submit", handlePasswordRecoverySubmit);
+    document.addEventListener("click", handlePasswordToggleClick);
     els.logoutBtn?.addEventListener("click", handleLogout);
 
     els.profCalcBtn?.addEventListener("click", () => handleAutoCalcByPrefix("prof"));

@@ -407,6 +407,48 @@ body.auth-locked #app-shell {
   color: #bae6fd;
 }
 
+.password-field-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-field-wrap .field {
+  padding-right: 2.75rem;
+}
+
+.password-toggle-btn {
+  position: absolute;
+  right: 0.45rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 0.65rem;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #94a3b8;
+  transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease;
+}
+
+.password-toggle-btn:hover {
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.password-toggle-btn[aria-pressed="true"] {
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(52, 211, 153, 0.22);
+}
+
+.password-toggle-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.45);
+}
+
 /* Cloud Sync Status Badge */
 .sync-badge {
   display: inline-flex;
