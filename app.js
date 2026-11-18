@@ -275,6 +275,10 @@
   let currentUser = null;
   let authMode = "login";
   let authBusy = false;
+  let pendingVerifyEmail = "";
+  let resendCooldownTimer = null;
+  let resendCooldownRemaining = 0;
+  let verifiedWelcomeShown = false;
   let isHydratingFromCloud = false;
   let syncQueueTimer = null;
 
@@ -2778,8 +2782,17 @@
     els.authForgotBtn = document.getElementById("auth-forgot-btn");
     els.authSubmitBtn = document.getElementById("auth-submit-btn");
     els.authSubmitLabel = document.getElementById("auth-submit-label");
+    els.authFooterWrap = document.getElementById("auth-footer-wrap");
     els.authTogglePrompt = document.getElementById("auth-toggle-prompt");
     els.authToggleBtn = document.getElementById("auth-toggle-btn");
+    els.authVerifyCard = document.getElementById("auth-verify-card");
+    els.authVerifyEmail = document.getElementById("auth-verify-email");
+    els.authResendBtn = document.getElementById("auth-resend-btn");
+    els.authResendLabel = document.getElementById("auth-resend-label");
+    els.authVerifyBackBtn = document.getElementById("auth-verify-back-btn");
+
+    els.topVerifiedBanner = document.getElementById("top-verified-banner");
+    els.topVerifiedBannerText = document.getElementById("top-verified-banner-text");
 
     els.passwordRecoveryModal = document.getElementById("password-recovery-modal");
     els.passwordRecoveryForm = document.getElementById("password-recovery-form");
@@ -3976,6 +3989,9 @@
 
   function translateAuthError(error) {
     const raw = String(error?.message || error || "").toLowerCase();
+    if (raw.includes("email not confirmed")) {
+      return "Akun Anda belum aktif! Silakan cek inbox atau folder spam email Anda untuk mengklik link verifikasi terlebih dahulu.";
+    }
     if (raw.includes("invalid login credentials")) {
       return "Password salah atau email belum terdaftar. Silakan periksa kembali.";
     }
@@ -3985,16 +4001,101 @@
     if (raw.includes("password should be at least")) {
       return "Password minimal harus terdiri dari 6 karakter.";
     }
-    if (raw.includes("email not confirmed")) {
-      return "Email belum dikonfirmasi. Cek kotak masuk email Anda atau matikan opsi Confirm Email di Supabase Dashboard.";
-    }
     if (raw.includes("invalid email") || raw.includes("unable to validate email")) {
       return "Format alamat email tidak valid.";
     }
-    if (raw.includes("rate limit") || raw.includes("too many requests")) {
-      return "Terlalu banyak percobaan. Silakan tunggu beberapa saat lalu coba lagi.";
+    if (raw.includes("rate limit") || raw.includes("too many requests") || raw.includes("security purposes")) {
+      return "Terlalu banyak percobaan pengiriman email. Silakan tunggu sekitar 60 detik lalu coba lagi.";
     }
     return error?.message || "Terjadi kesalahan autentikasi. Periksa koneksi internet Anda.";
+  }
+
+  function updateResendButtonUI() {
+    if (!els.authResendBtn || !els.authResendLabel) return;
+    if (resendCooldownRemaining > 0) {
+      els.authResendBtn.disabled = true;
+      els.authResendLabel.textContent = `Kirim Ulang Email Verifikasi (${resendCooldownRemaining}d)`;
+    } else {
+      els.authResendBtn.disabled = false;
+      els.authResendLabel.textContent = "Kirim Ulang Email Verifikasi";
+    }
+  }
+
+  function startResendCooldown(seconds = 60) {
+    window.clearInterval(resendCooldownTimer);
+    resendCooldownRemaining = Math.max(0, Math.round(seconds));
+    updateResendButtonUI();
+
+    if (resendCooldownRemaining <= 0) return;
+
+    resendCooldownTimer = window.setInterval(() => {
+      resendCooldownRemaining = Math.max(0, resendCooldownRemaining - 1);
+      updateResendButtonUI();
+      if (resendCooldownRemaining <= 0) {
+        window.clearInterval(resendCooldownTimer);
+        resendCooldownTimer = null;
+      }
+    }, 1000);
+  }
+
+  function showVerificationScreen(email) {
+    pendingVerifyEmail = String(email || "").trim();
+    if (els.authVerifyEmail) {
+      els.authVerifyEmail.textContent = pendingVerifyEmail || "email Anda";
+    }
+    setAuthMode("verify");
+    startResendCooldown(60);
+  }
+
+  async function handleResendVerificationEmail() {
+    if (resendCooldownRemaining > 0 || !supabaseClient) return;
+    const email = pendingVerifyEmail || els.authEmail?.value.trim() || "";
+    if (!email || !email.includes("@")) {
+      showAuthFeedback("Alamat email untuk verifikasi tidak ditemukan.", "error");
+      return;
+    }
+
+    clearAuthFeedback();
+    if (els.authResendBtn) els.authResendBtn.disabled = true;
+    if (els.authResendLabel) els.authResendLabel.textContent = "Mengirim ulang...";
+
+    try {
+      const { error } = await supabaseClient.auth.resend({
+        type: "signup",
+        email,
+        options: {
+          emailRedirectTo: window.location.origin
+        }
+      });
+      if (error) throw error;
+
+      startResendCooldown(60);
+      showAuthFeedback(`Email verifikasi telah dikirim ulang ke ${email}. Silakan cek inbox atau folder Spam Anda.`, "success");
+      showToast("Link verifikasi berhasil dikirim ulang!");
+    } catch (error) {
+      updateResendButtonUI();
+      const message = translateAuthError(error);
+      showAuthFeedback(message, "error");
+      showToast(message, "error");
+    }
+  }
+
+  function showEmailVerifiedWelcome() {
+    if (verifiedWelcomeShown) return;
+    verifiedWelcomeShown = true;
+
+    const welcomeMsg = "Email berhasil diverifikasi! Selamat datang.";
+    showToast(welcomeMsg, "success");
+
+    if (els.topVerifiedBanner) {
+      if (els.topVerifiedBannerText) {
+        els.topVerifiedBannerText.textContent = welcomeMsg;
+      }
+      els.topVerifiedBanner.hidden = false;
+      window.setTimeout(() => {
+        if (els.topVerifiedBanner) els.topVerifiedBanner.hidden = true;
+      }, 7500);
+    }
   }
 
   function resetPasswordVisibility(inputId) {
@@ -4113,18 +4214,30 @@
   }
 
   function setAuthMode(mode, options = {}) {
-    authMode = mode === "register" || mode === "forgot" ? mode : "login";
+    const allowedModes = ["login", "register", "forgot", "verify"];
+    authMode = allowedModes.includes(mode) ? mode : "login";
     if (!options.keepFeedback) clearAuthFeedback();
     resetPasswordVisibility("auth-password");
 
     const isRegister = authMode === "register";
     const isForgot = authMode === "forgot";
+    const isVerify = authMode === "verify";
+
+    if (els.authForm) {
+      els.authForm.hidden = isVerify;
+    }
+    if (els.authFooterWrap) {
+      els.authFooterWrap.hidden = isVerify;
+    }
+    if (els.authVerifyCard) {
+      els.authVerifyCard.hidden = !isVerify;
+    }
 
     if (els.authPasswordGroup) {
       els.authPasswordGroup.hidden = isForgot;
     }
     if (els.authPassword) {
-      els.authPassword.required = !isForgot;
+      els.authPassword.required = !isForgot && !isVerify;
       els.authPassword.setAttribute("autocomplete", isRegister ? "new-password" : "current-password");
     }
     if (els.authForgotWrap) {
@@ -4132,7 +4245,9 @@
     }
 
     if (els.authTitle) {
-      if (isForgot) {
+      if (isVerify) {
+        els.authTitle.textContent = "Verifikasi Email Anda!";
+      } else if (isForgot) {
         els.authTitle.textContent = "Reset Password · Gym Tracker App";
       } else if (isRegister) {
         els.authTitle.textContent = "Daftar · Gym Tracker App by LapoN";
@@ -4141,7 +4256,9 @@
       }
     }
     if (els.authSubtitle) {
-      if (isForgot) {
+      if (isVerify) {
+        els.authSubtitle.textContent = "Pendaftaran berhasil dibuat. Satu langkah lagi untuk mengaktifkan akun Anda.";
+      } else if (isForgot) {
         els.authSubtitle.textContent = "Masukkan alamat email akun Anda. Kami akan mengirimkan link pemulihan (recovery) untuk mengatur ulang password Anda.";
       } else if (isRegister) {
         els.authSubtitle.textContent = "Buat akun baru menggunakan email dan password untuk menyimpan seluruh progres latihan Anda di cloud.";
@@ -4319,13 +4436,30 @@
       } else if (authMode === "register") {
         const { data, error } = await supabaseClient.auth.signUp({
           email,
-          password
+          password,
+          options: {
+            emailRedirectTo: window.location.origin
+          }
         });
 
         if (error) throw error;
 
+        if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+          const dupMsg = "Email ini sudah terdaftar. Silakan masuk atau cek inbox email Anda untuk link verifikasi.";
+          showAuthFeedback(dupMsg, "error");
+          showToast(dupMsg, "error");
+          return;
+        }
+
+        if (data?.user && data.session === null) {
+          // Confirm Email di Supabase aktif: tampilkan layar Verifikasi Email Anda!
+          showVerificationScreen(email);
+          showToast("Link aktivasi akun telah dikirim ke email Anda!");
+          return;
+        }
+
         if (data?.user && data?.session) {
-          // Inisialisasi baris data awal untuk user baru jika sesi langsung aktif
+          // Inisialisasi baris data awal untuk user baru jika sesi langsung aktif, lalu tetap arahkan ke verifikasi/login
           const initialState = createDefaultState();
           await supabaseClient
             .from(SUPABASE_TABLE)
@@ -4341,9 +4475,8 @@
           await supabaseClient.auth.signOut();
         }
 
-        setAuthMode("login", { keepFeedback: true });
-        showAuthFeedback("Akun berhasil dibuat, silakan masuk.", "success");
-        els.authPassword?.focus();
+        showVerificationScreen(email);
+        showToast("Pendaftaran berhasil! Silakan cek email Anda.");
       } else {
         const { data, error } = await supabaseClient.auth.signInWithPassword({
           email,
@@ -4366,7 +4499,11 @@
         showToast(`Selamat datang, ${signedInUser.email}!`);
       }
     } catch (error) {
-      showAuthFeedback(translateAuthError(error), "error");
+      const message = translateAuthError(error);
+      showAuthFeedback(message, "error");
+      if (String(error?.message || "").toLowerCase().includes("email not confirmed")) {
+        showToast(message, "error");
+      }
     } finally {
       setAuthBusy(false);
     }
@@ -4419,9 +4556,18 @@
       return;
     }
 
+    const initialHash = window.location.hash || "";
+    const initialSearch = window.location.search || "";
     const isRecoveryRedirect =
-      window.location.hash.includes("type=recovery") ||
-      window.location.search.includes("type=recovery");
+      initialHash.includes("type=recovery") ||
+      initialSearch.includes("type=recovery");
+    const isEmailVerifyRedirect =
+      !isRecoveryRedirect &&
+      (initialHash.includes("access_token") ||
+        initialHash.includes("type=signup") ||
+        initialHash.includes("type=email") ||
+        initialSearch.includes("type=signup") ||
+        initialSearch.includes("code="));
 
     const cleanKey = String(SUPABASE_ANON_KEY || "").replace(/^\[|\]$/g, "").trim();
     supabaseClient = globalThis.supabase.createClient(SUPABASE_URL, cleanKey, {
@@ -4431,10 +4577,17 @@
       }
     });
 
-    supabaseClient.auth.onAuthStateChange((event, session) => {
+    supabaseClient.auth.onAuthStateChange(async (event, session) => {
       if (event === "PASSWORD_RECOVERY") {
         if (session?.user) currentUser = session.user;
         openPasswordRecoveryModal();
+      } else if (event === "SIGNED_IN" && session?.user && isEmailVerifyRedirect) {
+        hideAuthGate();
+        await loadUserDataFromCloud(session.user);
+        if (window.location.hash.includes("access_token")) {
+          window.history.replaceState(null, "", "#dashboard");
+        }
+        showEmailVerifiedWelcome();
       } else if (event === "SIGNED_OUT") {
         currentUser = null;
         closePasswordRecoveryModal();
@@ -4455,6 +4608,12 @@
       } else if (sessionUser) {
         hideAuthGate();
         await loadUserDataFromCloud(sessionUser);
+        if (isEmailVerifyRedirect) {
+          if (window.location.hash.includes("access_token")) {
+            window.history.replaceState(null, "", "#dashboard");
+          }
+          showEmailVerifiedWelcome();
+        }
       } else {
         showAuthGate();
       }
@@ -4480,6 +4639,14 @@
     els.authForgotBtn?.addEventListener("click", () => {
       setAuthMode("forgot");
       els.authEmail?.focus();
+    });
+    els.authResendBtn?.addEventListener("click", handleResendVerificationEmail);
+    els.authVerifyBackBtn?.addEventListener("click", () => {
+      setAuthMode("login");
+      if (pendingVerifyEmail && els.authEmail) {
+        els.authEmail.value = pendingVerifyEmail;
+      }
+      els.authPassword?.focus();
     });
     els.passwordRecoveryForm?.addEventListener("submit", handlePasswordRecoverySubmit);
     document.addEventListener("click", handlePasswordToggleClick);

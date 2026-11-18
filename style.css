@@ -449,6 +449,10 @@ body.auth-locked #app-shell {
   box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.45);
 }
 
+.verify-card {
+  animation: modal-fade 220ms ease-out both;
+}
+
 /* Cloud Sync Status Badge */
 .sync-badge {
   display: inline-flex;
