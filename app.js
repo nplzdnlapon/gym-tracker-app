@@ -281,6 +281,9 @@
   let verifiedWelcomeShown = false;
   let isHydratingFromCloud = false;
   let syncQueueTimer = null;
+  let aiCompressedImageBase64 = "";
+  let aiCompressedMimeType = "image/jpeg";
+  let aiAnalyzing = false;
 
   const numberFormatter = new Intl.NumberFormat("id-ID");
   const decimalFormatter = new Intl.NumberFormat("id-ID", {
@@ -2755,6 +2758,27 @@
     els.mealTemplateSubmitBtn = document.getElementById("meal-template-submit-btn");
     els.resetMealTemplatesBtn = document.getElementById("reset-meal-templates-btn");
     els.mealTemplateManageList = document.getElementById("meal-template-manage-list");
+    els.aiFoodForm = document.getElementById("ai-food-form");
+    els.aiFoodPrompt = document.getElementById("ai-food-prompt");
+    els.aiFoodImage = document.getElementById("ai-food-image");
+    els.aiFoodGallery = document.getElementById("ai-food-gallery");
+    els.aiCameraTrigger = document.getElementById("ai-camera-trigger");
+    els.aiGalleryTrigger = document.getElementById("ai-gallery-trigger");
+    els.aiImagePreviewWrap = document.getElementById("ai-image-preview-wrap");
+    els.aiImagePreview = document.getElementById("ai-image-preview");
+    els.aiImageMeta = document.getElementById("ai-image-meta");
+    els.aiRemoveImageBtn = document.getElementById("ai-remove-image-btn");
+    els.aiAnalyzeBtn = document.getElementById("ai-analyze-btn");
+    els.aiAnalyzeSpinner = document.getElementById("ai-analyze-spinner");
+    els.aiAnalyzeLabel = document.getElementById("ai-analyze-label");
+    els.aiResultCard = document.getElementById("ai-result-card");
+    els.aiResName = document.getElementById("ai-res-name");
+    els.aiResCalories = document.getElementById("ai-res-calories");
+    els.aiResProtein = document.getElementById("ai-res-protein");
+    els.aiResCarbs = document.getElementById("ai-res-carbs");
+    els.aiResFat = document.getElementById("ai-res-fat");
+    els.aiResNotes = document.getElementById("ai-res-notes");
+    els.customFoodCard = document.getElementById("custom-food-card");
     els.foodForm = document.getElementById("food-form");
     els.foodName = document.getElementById("food-name");
     els.foodCalories = document.getElementById("food-calories");
@@ -3109,6 +3133,179 @@
     button.classList.add("is-added");
     window.setTimeout(() => button.classList.remove("is-added"), 520);
     showToast(`+${meal.name} · ${formatNumber(meal.calories)} kcal, ${formatMacro(meal.protein)} g protein`);
+  }
+
+  function compressFoodImage(file, maxWidth = 800, quality = 0.7) {
+    return new Promise((resolve, reject) => {
+      if (!file || !file.type.startsWith("image/")) {
+        reject(new Error("Pilih file gambar yang valid (JPG, PNG, atau WEBP)."));
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("Gagal membaca file gambar dari perangkat."));
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = () => reject(new Error("Format gambar tidak dapat dimuat."));
+        img.onload = () => {
+          let width = img.naturalWidth || img.width || 800;
+          let height = img.naturalHeight || img.height || 600;
+
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            reject(new Error("Canvas kompresi gambar tidak didukung di browser ini."));
+            return;
+          }
+
+          ctx.fillStyle = "#0f172a";
+          ctx.fillRect(0, 0, width, height);
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const dataUrl = canvas.toDataURL("image/jpeg", quality);
+          const base64 = dataUrl.includes(",") ? dataUrl.split(",")[1] : dataUrl;
+          const approxKb = Math.max(1, Math.round((base64.length * 3) / 4 / 1024));
+
+          resolve({
+            dataUrl,
+            base64,
+            mimeType: "image/jpeg",
+            width,
+            height,
+            approxKb
+          });
+        };
+        img.src = String(reader.result || "");
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function clearAiFoodImage() {
+    aiCompressedImageBase64 = "";
+    aiCompressedMimeType = "image/jpeg";
+    if (els.aiFoodImage) els.aiFoodImage.value = "";
+    if (els.aiFoodGallery) els.aiFoodGallery.value = "";
+    if (els.aiImagePreview) els.aiImagePreview.src = "";
+    if (els.aiImagePreviewWrap) els.aiImagePreviewWrap.hidden = true;
+  }
+
+  async function handleAiFoodImageChange(event) {
+    const file = event.target?.files?.[0];
+    if (!file) return;
+
+    try {
+      const compressed = await compressFoodImage(file, 800, 0.7);
+      aiCompressedImageBase64 = compressed.base64;
+      aiCompressedMimeType = compressed.mimeType;
+
+      if (els.aiImagePreview) {
+        els.aiImagePreview.src = compressed.dataUrl;
+      }
+      if (els.aiImageMeta) {
+        els.aiImageMeta.textContent = `${compressed.width}×${compressed.height}px · ~${compressed.approxKb} KB (JPEG 0.7)`;
+      }
+      if (els.aiImagePreviewWrap) {
+        els.aiImagePreviewWrap.hidden = false;
+      }
+      showToast("Foto makanan berhasil dikompresi & siap dianalisis AI.");
+    } catch (error) {
+      clearAiFoodImage();
+      showToast(error?.message || "Gagal memproses foto makanan.", "error");
+    }
+  }
+
+  function setAiAnalyzeLoading(loading) {
+    aiAnalyzing = Boolean(loading);
+    if (els.aiAnalyzeBtn) els.aiAnalyzeBtn.disabled = aiAnalyzing;
+    if (els.aiCameraTrigger) els.aiCameraTrigger.disabled = aiAnalyzing;
+    if (els.aiGalleryTrigger) els.aiGalleryTrigger.disabled = aiAnalyzing;
+    if (els.aiFoodPrompt) els.aiFoodPrompt.disabled = aiAnalyzing;
+    if (els.aiAnalyzeSpinner) els.aiAnalyzeSpinner.hidden = !aiAnalyzing;
+    if (els.aiAnalyzeLabel) {
+      els.aiAnalyzeLabel.textContent = aiAnalyzing
+        ? "Menganalisis dengan Gemini AI..."
+        : "Analisis dengan AI ⚡";
+    }
+  }
+
+  async function handleAiFoodAnalyze(event) {
+    event.preventDefault();
+    if (aiAnalyzing) return;
+
+    const textPrompt = els.aiFoodPrompt?.value.trim() || "";
+    if (!textPrompt && !aiCompressedImageBase64) {
+      showToast("Ketik deskripsi makanan atau ambil/pilih foto makanan terlebih dahulu.", "error");
+      els.aiFoodPrompt?.focus();
+      return;
+    }
+
+    setAiAnalyzeLoading(true);
+
+    try {
+      const response = await fetch("/api/analyze-food", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          textPrompt,
+          imageBase64: aiCompressedImageBase64,
+          mimeType: aiCompressedMimeType
+        })
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok || !data) {
+        throw new Error(
+          data?.error ||
+            "Gagal terhubung ke endpoint /api/analyze-food. Pastikan proyek dijalankan di Vercel dengan GEMINI_API_KEY aktif."
+        );
+      }
+
+      const foodName = String(data.foodName || textPrompt || "Menu Hasil AI").trim().slice(0, 80);
+      const calories = Math.max(0, Math.round(Number(data.calories) || 0));
+      const protein = Math.max(0, Math.round(Number(data.protein) || 0));
+      const carbs = Math.max(0, Math.round(Number(data.carbs) || 0));
+      const fat = Math.max(0, Math.round(Number(data.fat) || 0));
+      const notes = String(data.notes || "Estimasi porsi standar ahli gizi olahraga.").trim();
+
+      if (els.aiResName) els.aiResName.textContent = foodName;
+      if (els.aiResCalories) els.aiResCalories.textContent = formatNumber(calories);
+      if (els.aiResProtein) els.aiResProtein.textContent = formatNumber(protein);
+      if (els.aiResCarbs) els.aiResCarbs.textContent = formatNumber(carbs);
+      if (els.aiResFat) els.aiResFat.textContent = formatNumber(fat);
+      if (els.aiResNotes) els.aiResNotes.textContent = notes;
+      if (els.aiResultCard) els.aiResultCard.hidden = false;
+
+      // Auto-fill ke form Custom Food Input di bawahnya agar user bisa cek/koreksi sebelum klik Tambah ke Log Hari Ini
+      if (els.foodName) els.foodName.value = foodName;
+      if (els.foodCalories) els.foodCalories.value = String(calories);
+      if (els.foodProtein) els.foodProtein.value = String(protein);
+
+      if (els.customFoodCard) {
+        els.customFoodCard.classList.add("ai-autofill-flash");
+        window.setTimeout(() => {
+          els.customFoodCard?.classList.remove("ai-autofill-flash");
+        }, 1800);
+      }
+
+      showToast(`Estimasi AI: ${foodName} (${formatNumber(calories)} kcal · ${formatNumber(protein)}g protein) terisi ke form!`);
+    } catch (error) {
+      console.warn("AI Food Scanner error:", error);
+      showToast(error?.message || "Gagal menganalisis makanan dengan AI.", "error");
+    } finally {
+      setAiAnalyzeLoading(false);
+    }
   }
 
   function handleFoodSubmit(event) {
@@ -4738,6 +4935,14 @@
     els.mealTemplateCancelEdit?.addEventListener("click", resetMealTemplateForm);
     els.mealTemplateManageList?.addEventListener("click", handleMealTemplateManageClick);
     els.resetMealTemplatesBtn?.addEventListener("click", handleResetMealTemplates);
+
+    els.aiCameraTrigger?.addEventListener("click", () => els.aiFoodImage?.click());
+    els.aiGalleryTrigger?.addEventListener("click", () => els.aiFoodGallery?.click());
+    els.aiFoodImage?.addEventListener("change", handleAiFoodImageChange);
+    els.aiFoodGallery?.addEventListener("change", handleAiFoodImageChange);
+    els.aiRemoveImageBtn?.addEventListener("click", clearAiFoodImage);
+    els.aiFoodForm?.addEventListener("submit", handleAiFoodAnalyze);
+
     els.foodForm.addEventListener("submit", handleFoodSubmit);
     els.foodList.addEventListener("click", handleFoodDelete);
 

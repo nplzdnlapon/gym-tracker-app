@@ -1,5 +1,5 @@
 /* PowerBuild Tracker service worker: app shell + offline fallback. */
-const CACHE_NAME = "powerbuild-shell-v2.5.0";
+const CACHE_NAME = "powerbuild-shell-v2.6.0";
 
 const APP_SHELL = [
   "./",
@@ -120,8 +120,12 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.protocol !== "http:" && url.protocol !== "https:") return;
 
-  // Never cache Supabase Auth or REST API calls
-  if (url.hostname.endsWith("supabase.co") || url.hostname.endsWith("supabase.com")) {
+  // Never cache Supabase Auth or REST API calls or serverless /api/ endpoints
+  if (
+    url.hostname.endsWith("supabase.co") ||
+    url.hostname.endsWith("supabase.com") ||
+    url.pathname.startsWith("/api/")
+  ) {
     return;
   }
 

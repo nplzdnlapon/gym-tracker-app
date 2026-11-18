@@ -38,7 +38,7 @@
       }
     };
   </script>
-  <link rel="stylesheet" href="style.css?v=2.5">
+  <link rel="stylesheet" href="style.css?v=2.6">
 </head>
 
 <body class="auth-locked">
@@ -877,7 +877,119 @@
         </details>
       </article>
 
-      <article class="glass-card p-5 sm:p-6">
+      <!-- AI SMART FOOD SCANNER (GEMINI 2.5 FLASH) -->
+      <article id="ai-scanner-card" class="glass-card relative overflow-hidden border border-emerald-400/25 p-5 sm:p-6">
+        <div class="pointer-events-none absolute -right-14 -top-14 h-36 w-36 rounded-full bg-emerald-400/10 blur-3xl"></div>
+        <div class="pointer-events-none absolute -bottom-14 -left-14 h-36 w-36 rounded-full bg-cyan-400/10 blur-3xl"></div>
+
+        <div class="relative flex items-start justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-emerald-400/20 to-cyan-400/20 text-emerald-300 ring-1 ring-inset ring-emerald-400/30">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5" aria-hidden="true">
+                <path d="M12 3v3m0 12v3M3 12h3m12 0h3m-2.6-6.4-2.1 2.1M8.7 15.3l-2.1 2.1m0-12.8 2.1 2.1m6.6 6.6 2.1 2.1"/>
+              </svg>
+            </span>
+            <div>
+              <h3 class="text-sm font-semibold text-white">✨ AI Smart Food Scanner</h3>
+              <p class="mt-0.5 text-[11px] text-slate-400">Estimasi kalori &amp; protein otomatis dari teks atau foto makanan</p>
+            </div>
+          </div>
+          <span class="shrink-0 whitespace-nowrap rounded-full border border-emerald-400/25 bg-emerald-400/10 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-emerald-300">
+            Gemini 2.5 Flash
+          </span>
+        </div>
+
+        <form id="ai-food-form" class="relative mt-4 space-y-3.5" novalidate>
+          <div>
+            <label for="ai-food-prompt" class="mb-1.5 block text-[11px] font-medium text-slate-300">Deskripsi Menu Makanan (Opsional jika pakai foto)</label>
+            <input id="ai-food-prompt" type="text" maxlength="220" placeholder="Nasi goreng telur dadar 1 piring + kerupuk" class="field text-xs" autocomplete="off">
+          </div>
+
+          <div>
+            <span class="mb-1.5 block text-[11px] font-medium text-slate-300">Foto Makanan (Kamera / Galeri)</span>
+            <!-- Input Kamera langsung (capture="environment") sesuai spesifikasi -->
+            <input id="ai-food-image" type="file" accept="image/*" capture="environment" class="sr-only">
+            <!-- Input Galeri opsional untuk memilih foto yang sudah ada di HP/PC -->
+            <input id="ai-food-gallery" type="file" accept="image/*" class="sr-only">
+
+            <div class="grid grid-cols-2 gap-2.5">
+              <button id="ai-camera-trigger" type="button" class="btn-secondary flex items-center justify-center gap-2 border-emerald-400/25 bg-emerald-400/[0.07] py-2.5 text-xs font-semibold text-emerald-200 hover:bg-emerald-400/15">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4 text-emerald-300" aria-hidden="true">
+                  <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
+                  <circle cx="12" cy="13" r="3"/>
+                </svg>
+                <span>Potret Kamera</span>
+              </button>
+
+              <button id="ai-gallery-trigger" type="button" class="btn-secondary flex items-center justify-center gap-2 py-2.5 text-xs font-semibold text-slate-200 hover:text-white">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4 text-cyan-300" aria-hidden="true">
+                  <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
+                  <circle cx="9" cy="9" r="2"/>
+                  <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+                </svg>
+                <span>Pilih Galeri</span>
+              </button>
+            </div>
+
+            <!-- Preview Gambar Terkompresi -->
+            <div id="ai-image-preview-wrap" class="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-emerald-400/25 bg-slate-950/60 p-2.5" hidden>
+              <div class="flex min-w-0 items-center gap-3">
+                <img id="ai-image-preview" src="" alt="Preview foto makanan" class="h-14 w-14 shrink-0 rounded-xl border border-white/10 object-cover">
+                <div class="min-w-0">
+                  <p class="truncate text-xs font-semibold text-emerald-300">Foto siap dianalisis</p>
+                  <p id="ai-image-meta" class="mt-0.5 text-[10px] text-slate-400">Terkompresi (JPEG maks. 800px)</p>
+                </div>
+              </div>
+              <button id="ai-remove-image-btn" type="button" class="shrink-0 rounded-xl border border-rose-400/25 bg-rose-400/10 px-2.5 py-1.5 text-[10px] font-bold text-rose-200 transition hover:bg-rose-400/20">
+                Hapus
+              </button>
+            </div>
+          </div>
+
+          <button id="ai-analyze-btn" type="submit" class="btn-primary flex w-full items-center justify-center gap-2 py-3 text-xs sm:text-sm">
+            <span id="ai-analyze-spinner" class="ai-spinner" hidden aria-hidden="true"></span>
+            <span id="ai-analyze-label">Analisis dengan AI ⚡</span>
+          </button>
+        </form>
+
+        <!-- Ringkasan Hasil Estimasi AI -->
+        <div id="ai-result-card" class="mt-4 rounded-2xl border border-emerald-400/30 bg-emerald-400/[0.06] p-4" hidden>
+          <div class="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <span class="inline-flex items-center gap-1 rounded-full bg-emerald-400/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-300">
+                ✓ Estimasi AI Terisi ke Form di Bawah
+              </span>
+              <h4 id="ai-res-name" class="mt-1.5 text-sm font-bold text-white">—</h4>
+            </div>
+          </div>
+
+          <div class="mt-3 grid grid-cols-4 gap-2 text-center">
+            <div class="rounded-xl border border-white/10 bg-slate-950/60 px-2 py-2">
+              <p class="text-[9px] font-semibold uppercase tracking-wider text-slate-400">Kalori</p>
+              <p class="mt-0.5 font-mono text-xs font-bold text-blue-300"><span id="ai-res-calories">0</span> kcal</p>
+            </div>
+            <div class="rounded-xl border border-white/10 bg-slate-950/60 px-2 py-2">
+              <p class="text-[9px] font-semibold uppercase tracking-wider text-slate-400">Protein</p>
+              <p class="mt-0.5 font-mono text-xs font-bold text-emerald-300"><span id="ai-res-protein">0</span> g</p>
+            </div>
+            <div class="rounded-xl border border-white/10 bg-slate-950/60 px-2 py-2">
+              <p class="text-[9px] font-semibold uppercase tracking-wider text-slate-400">Karbo</p>
+              <p class="mt-0.5 font-mono text-xs font-bold text-amber-300"><span id="ai-res-carbs">0</span> g</p>
+            </div>
+            <div class="rounded-xl border border-white/10 bg-slate-950/60 px-2 py-2">
+              <p class="text-[9px] font-semibold uppercase tracking-wider text-slate-400">Lemak</p>
+              <p class="mt-0.5 font-mono text-xs font-bold text-rose-300"><span id="ai-res-fat">0</span> g</p>
+            </div>
+          </div>
+
+          <p id="ai-res-notes" class="mt-2.5 text-[11px] leading-relaxed text-slate-300"></p>
+          <p class="mt-1.5 text-[10px] text-emerald-300/80">
+            Angka sudah otomatis diisikan ke form <strong>Custom Food Input</strong> di bawah. Silakan koreksi jika perlu lalu klik <strong>Tambah ke Log Hari Ini</strong>.
+          </p>
+        </div>
+      </article>
+
+      <article id="custom-food-card" class="glass-card p-5 sm:p-6">
         <div class="flex items-center gap-3">
           <span class="grid h-10 w-10 place-items-center rounded-xl bg-blue-400/10 text-blue-300 ring-1 ring-inset ring-blue-400/20">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5" aria-hidden="true">
@@ -885,8 +997,8 @@
             </svg>
           </span>
           <div>
-            <h3 class="text-sm font-semibold text-white">Input Makanan Manual</h3>
-            <p class="mt-0.5 text-[11px] text-slate-400">Catat makanan ke log hari ini atau simpan jadi preset favorit</p>
+            <h3 class="text-sm font-semibold text-white">Custom Food Input (Input Makanan Manual)</h3>
+            <p class="mt-0.5 text-[11px] text-slate-400">Cek atau koreksi hasil AI sebelum menambahkannya ke log hari ini</p>
           </div>
         </div>
 
@@ -911,7 +1023,7 @@
           </label>
           <button type="submit" class="btn-primary flex w-full items-center justify-center gap-2 py-3">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" class="h-4 w-4" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-            Tambah ke Log
+            Tambah ke Log Hari Ini
           </button>
         </form>
       </article>
@@ -1399,6 +1511,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
-  <script src="app.js?v=2.5" defer></script>
+  <script src="app.js?v=2.6" defer></script>
 </body>
 </html>

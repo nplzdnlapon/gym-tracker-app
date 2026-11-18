@@ -453,6 +453,28 @@ body.auth-locked #app-shell {
   animation: modal-fade 220ms ease-out both;
 }
 
+.ai-spinner {
+  display: inline-block;
+  width: 0.95rem;
+  height: 0.95rem;
+  border-radius: 999px;
+  border: 2px solid rgba(15, 23, 42, 0.28);
+  border-top-color: #0f172a;
+  animation: ai-spin 680ms linear infinite;
+}
+
+.ai-autofill-flash {
+  border-color: rgba(52, 211, 153, 0.55) !important;
+  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.16), 0 24px 60px -30px rgba(16, 185, 129, 0.45);
+  transition: border-color 280ms ease, box-shadow 280ms ease;
+}
+
+@keyframes ai-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* Cloud Sync Status Badge */
 .sync-badge {
   display: inline-flex;
