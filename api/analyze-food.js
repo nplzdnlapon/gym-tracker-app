@@ -1,7 +1,7 @@
 /**
  * Vercel Serverless Function: /api/analyze-food
  * Menghitung estimasi kalori & makronutrisi makanan (teks dan/atau foto)
- * menggunakan Google Gemini API (gemini-2.5-flash).
+ * menggunakan Google Gemini API (gemini-3.8-flash).
  */
 
 module.exports = async function handler(req, res) {
@@ -68,7 +68,7 @@ module.exports = async function handler(req, res) {
 
     userParts.push({ text: promptInstruction });
 
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
 
     const geminiResponse = await fetch(endpoint, {
       method: "POST",
