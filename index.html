@@ -38,7 +38,7 @@
       }
     };
   </script>
-  <link rel="stylesheet" href="style.css?v=2.2">
+  <link rel="stylesheet" href="style.css?v=2.3">
 </head>
 
 <body class="auth-locked">
@@ -111,12 +111,20 @@
           <h1 class="text-sm font-semibold tracking-tight text-white">Gym Tracker App</h1>
         </div>
       </div>
-      <button id="open-settings" type="button" class="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/5 text-slate-300 transition hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60" aria-label="Buka pengaturan dan backup data" aria-haspopup="dialog" aria-expanded="false">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5" aria-hidden="true">
-          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
-          <circle cx="12" cy="12" r="3"/>
-        </svg>
-      </button>
+      <div class="flex items-center gap-2">
+        <button id="header-profile-btn" type="button" data-go-tab="profile" class="inline-flex h-10 items-center gap-1.5 rounded-xl border border-emerald-400/25 bg-emerald-400/10 px-3 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-400/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60" aria-label="Buka halaman profil">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4" aria-hidden="true">
+            <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+          </svg>
+          <span id="header-nickname-label" class="max-w-[5.5rem] truncate">Profile</span>
+        </button>
+        <button id="open-settings" type="button" class="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/5 text-slate-300 transition hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60" aria-label="Buka pengaturan dan backup data" aria-haspopup="dialog" aria-expanded="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5" aria-hidden="true">
+            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
+      </div>
     </div>
   </header>
 
@@ -132,7 +140,7 @@
             </svg>
           </span>
           <div class="min-w-0">
-            <p class="text-[9px] font-bold uppercase tracking-widest text-slate-400">Akun Aktif</p>
+            <p id="dash-user-greeting" class="text-[10px] font-bold uppercase tracking-widest text-emerald-400">Akun Aktif</p>
             <p id="user-email-display" class="truncate font-mono text-xs font-semibold text-white">Memuat sesi...</p>
           </div>
         </div>
@@ -157,7 +165,7 @@
         </div>
         <span class="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-300">
           <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
-          Fat Loss
+          <span id="dash-goal-badge">Fat Loss / Cutting</span>
         </span>
       </div>
 
@@ -173,7 +181,7 @@
             </span>
             <div>
               <h3 class="text-sm font-semibold text-white">Bodyweight Tracker</h3>
-              <p class="mt-0.5 text-[11px] text-slate-400">Update harian &middot; target <span id="target-weight">80</span> kg</p>
+              <p class="mt-0.5 text-[11px] text-slate-400">Update harian &middot; target <span id="target-weight">—</span> kg</p>
             </div>
           </div>
           <span id="weight-change-badge" class="inline-flex items-center gap-1 rounded-full bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-slate-400">—</span>
@@ -183,27 +191,27 @@
           <div>
             <p class="text-[11px] font-medium uppercase tracking-wider text-slate-500">Berat saat ini</p>
             <div class="mt-0.5 flex items-baseline gap-1.5">
-              <span id="current-weight" class="font-mono text-5xl font-semibold tracking-[-0.06em] text-white">94,0</span>
+              <span id="current-weight" class="font-mono text-5xl font-semibold tracking-[-0.06em] text-white">—</span>
               <span class="pb-1.5 text-sm font-semibold text-slate-400">kg</span>
             </div>
           </div>
           <div class="text-right">
             <p class="text-[11px] font-medium uppercase tracking-wider text-slate-500">Target</p>
-            <p class="mt-0.5 font-mono text-xl font-semibold text-emerald-300"><span id="target-weight-side">80</span> <span class="text-xs text-slate-500">kg</span></p>
+            <p class="mt-0.5 font-mono text-xl font-semibold text-emerald-300"><span id="target-weight-side">—</span> <span class="text-xs text-slate-500">kg</span></p>
           </div>
         </div>
 
         <div class="mt-5">
           <div class="flex items-center justify-between text-[11px] font-medium">
-            <span class="text-slate-400">Progres penurunan berat</span>
+            <span id="weight-progress-title" class="text-slate-400">Progres target berat</span>
             <span id="weight-progress-label" class="text-emerald-300">0%</span>
           </div>
-          <div class="mt-2 h-2 overflow-hidden rounded-full bg-slate-950/60 ring-1 ring-inset ring-white/5" role="progressbar" aria-label="Progres penurunan berat badan" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div class="mt-2 h-2 overflow-hidden rounded-full bg-slate-950/60 ring-1 ring-inset ring-white/5" role="progressbar" aria-label="Progres berat badan" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
             <div id="weight-progress-bar" class="h-full rounded-full bg-gradient-to-r from-emerald-500 via-emerald-400 to-cyan-400 transition-all duration-500" style="width: 0%"></div>
           </div>
           <div class="mt-2 flex items-center justify-between gap-3 text-[10px]">
-            <span id="weight-remaining" class="text-slate-400">14,0 kg lagi menuju target</span>
-            <span class="shrink-0 text-slate-500">Mulai <span id="weight-start">94</span> kg</span>
+            <span id="weight-remaining" class="text-slate-400">Atur target di Profile</span>
+            <span class="shrink-0 text-slate-500">Mulai <span id="weight-start">—</span> kg</span>
           </div>
         </div>
 
@@ -219,7 +227,7 @@
           <label for="weight-input" class="text-[11px] font-medium text-slate-400">Update berat hari ini</label>
           <div class="mt-1.5 flex gap-2">
             <div class="relative min-w-0 flex-1">
-              <input id="weight-input" type="number" inputmode="decimal" min="30" max="300" step="0.1" required placeholder="94.0" class="field pr-11 font-mono">
+              <input id="weight-input" type="number" inputmode="decimal" min="30" max="300" step="0.1" required placeholder="70.0" class="field pr-11 font-mono">
               <span class="pointer-events-none absolute inset-y-0 right-3.5 flex items-center text-xs font-medium text-slate-500">kg</span>
             </div>
             <button type="submit" class="btn-primary shrink-0 px-4">Update</button>
@@ -254,14 +262,14 @@
               <div class="flex items-baseline gap-1.5">
                 <span class="text-xs font-semibold text-slate-300">Kalori</span>
                 <span id="dash-calories-value" class="font-mono text-base font-semibold text-white">0</span>
-                <span class="text-[11px] text-slate-500">/ <span id="dash-calories-target">2.350</span> kcal</span>
+                <span class="text-[11px] text-slate-500">/ <span id="dash-calories-target">0</span> kcal</span>
               </div>
               <span id="dash-calories-percent" class="text-[11px] font-semibold text-blue-300">0%</span>
             </div>
             <div class="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-950/60 ring-1 ring-inset ring-white/5" role="progressbar" aria-label="Kalori hari ini" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
               <div id="dash-calories-bar" class="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-400 transition-all duration-500" style="width: 0%"></div>
             </div>
-            <p id="dash-calories-note" class="mt-1.5 text-[10px] text-slate-500">Sisa 2.350 kcal</p>
+            <p id="dash-calories-note" class="mt-1.5 text-[10px] text-slate-500">Sisa 0 kcal</p>
           </div>
 
           <div>
@@ -269,14 +277,14 @@
               <div class="flex items-baseline gap-1.5">
                 <span class="text-xs font-semibold text-slate-300">Protein</span>
                 <span id="dash-protein-value" class="font-mono text-base font-semibold text-white">0</span>
-                <span class="text-[11px] text-slate-500">/ <span id="dash-protein-target">180</span> g</span>
+                <span class="text-[11px] text-slate-500">/ <span id="dash-protein-target">0</span> g</span>
               </div>
               <span id="dash-protein-percent" class="text-[11px] font-semibold text-emerald-300">0%</span>
             </div>
             <div class="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-950/60 ring-1 ring-inset ring-white/5" role="progressbar" aria-label="Protein hari ini" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
               <div id="dash-protein-bar" class="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-300 transition-all duration-500" style="width: 0%"></div>
             </div>
-            <p id="dash-protein-note" class="mt-1.5 text-[10px] text-slate-500">Sisa 180 g protein</p>
+            <p id="dash-protein-note" class="mt-1.5 text-[10px] text-slate-500">Sisa 0 g protein</p>
           </div>
         </div>
 
@@ -506,7 +514,7 @@
               <div>
                 <div class="flex items-center gap-2">
                   <p class="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Estimated 1RM · Rumus Epley</p>
-                  <span id="workout-live-pr-badge" class="pr-badge" hidden>PR!</span>
+                  <span id="workout-live-pr-badge" class="pr-badge" hidden>NEW PR! 🔥</span>
                 </div>
                 <p class="mt-0.5 font-mono text-[10px] text-slate-500">Weight &times; (1 + Reps / 30)</p>
               </div>
@@ -626,7 +634,7 @@
       <div class="flex items-end justify-between gap-3 px-1 pt-2">
         <div>
           <h3 class="text-sm font-semibold text-white">Riwayat Latihan Berdasarkan Tanggal</h3>
-          <p class="mt-0.5 text-[10px] text-slate-500">Badge <span class="font-bold text-amber-300">PR!</span> muncul saat angkatan melewati rekor terbaik (Squat &gt; 140 kg, Deadlift &gt; 192 kg, dll.)</p>
+          <p class="mt-0.5 text-[10px] text-slate-500">Badge <span class="font-bold text-amber-300">NEW PR! 🔥</span> muncul saat angkatan melewati Baseline PR di Profile Anda &amp; otomatis memperbarui rekor</p>
         </div>
         <span id="workout-history-count" class="shrink-0 text-[10px] text-slate-500">0 sesi</span>
       </div>
@@ -642,7 +650,7 @@
         </div>
         <span class="inline-flex items-center gap-1.5 rounded-full border border-blue-400/20 bg-blue-400/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-blue-300">
           <span class="h-1.5 w-1.5 rounded-full bg-blue-400"></span>
-          Cutting
+          <span id="diet-goal-badge">Cutting</span>
         </span>
       </div>
 
@@ -661,14 +669,14 @@
               <div class="flex items-baseline gap-1.5">
                 <span class="text-xs font-semibold text-slate-300">Kalori</span>
                 <span id="diet-calories-value" class="font-mono text-base font-semibold text-white">0</span>
-                <span class="text-[11px] text-slate-500">/ <span id="diet-calories-target">2.350</span> kcal</span>
+                <span class="text-[11px] text-slate-500">/ <span id="diet-calories-target">0</span> kcal</span>
               </div>
               <span id="diet-calories-percent" class="text-[11px] font-semibold text-blue-300">0%</span>
             </div>
             <div class="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-950/60 ring-1 ring-inset ring-white/5" role="progressbar" aria-label="Kalori hari ini" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
               <div id="diet-calories-bar" class="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-400 transition-all duration-500" style="width: 0%"></div>
             </div>
-            <p id="diet-calories-note" class="mt-1.5 text-[10px] text-slate-500">Sisa 2.350 kcal</p>
+            <p id="diet-calories-note" class="mt-1.5 text-[10px] text-slate-500">Sisa 0 kcal</p>
           </div>
 
           <div>
@@ -676,14 +684,14 @@
               <div class="flex items-baseline gap-1.5">
                 <span class="text-xs font-semibold text-slate-300">Protein</span>
                 <span id="diet-protein-value" class="font-mono text-base font-semibold text-white">0</span>
-                <span class="text-[11px] text-slate-500">/ <span id="diet-protein-target">180</span> g</span>
+                <span class="text-[11px] text-slate-500">/ <span id="diet-protein-target">0</span> g</span>
               </div>
               <span id="diet-protein-percent" class="text-[11px] font-semibold text-emerald-300">0%</span>
             </div>
             <div class="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-950/60 ring-1 ring-inset ring-white/5" role="progressbar" aria-label="Protein hari ini" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
               <div id="diet-protein-bar" class="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-300 transition-all duration-500" style="width: 0%"></div>
             </div>
-            <p id="diet-protein-note" class="mt-1.5 text-[10px] text-slate-500">Sisa 180 g protein</p>
+            <p id="diet-protein-note" class="mt-1.5 text-[10px] text-slate-500">Sisa 0 g protein</p>
           </div>
         </div>
       </article>
@@ -697,40 +705,40 @@
               </svg>
             </span>
             <div>
-              <h3 class="text-sm font-semibold text-white">Template Menu Diet (1-Tap)</h3>
-              <p class="mt-0.5 text-[11px] text-slate-400">Ketuk menu untuk langsung masuk log hari ini</p>
+              <h3 class="text-sm font-semibold text-white">Preset Makanan Favorit (Quick Add)</h3>
+              <p class="mt-0.5 text-[11px] text-slate-400">Ketuk preset untuk langsung masuk log hari ini</p>
             </div>
           </div>
           <span class="shrink-0 whitespace-nowrap rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-emerald-300">1-Tap</span>
         </div>
 
         <div id="quick-meal-grid" class="mt-4 grid grid-cols-2 gap-2.5"></div>
-        <p class="mt-3 text-[10px] leading-relaxed text-slate-500">Setiap ketukan menambahkan 1 porsi ke log hari ini. Anda bisa menambah, mengedit, atau menghapus daftar template menu di bawah.</p>
+        <p class="mt-3 text-[10px] leading-relaxed text-slate-500">Setiap ketukan menambahkan 1 porsi ke log hari ini. Anda bebas menambah, mengedit, atau menghapus tombol Preset Makanan Favorit di bawah.</p>
 
         <details id="meal-template-details" class="group mt-3.5 rounded-2xl border border-white/5 bg-slate-950/35">
           <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-xs font-semibold text-slate-300 transition hover:text-white">
-            <span>Atur, Edit &amp; Tambah Template Menu Diet</span>
-            <span class="text-[10px] font-medium text-emerald-400 group-open:hidden">Kelola Menu</span>
+            <span>Atur, Tambah &amp; Hapus Preset Makanan Favorit</span>
+            <span class="text-[10px] font-medium text-emerald-400 group-open:hidden">Kelola Preset</span>
             <span class="hidden text-[10px] font-medium text-slate-400 group-open:inline">Tutup</span>
           </summary>
 
           <div class="space-y-4 border-t border-white/5 p-3.5 sm:p-4">
             <form id="meal-template-form" class="rounded-2xl border border-emerald-400/20 bg-slate-900/70 p-3.5 space-y-3" novalidate>
               <div class="flex items-center justify-between gap-2">
-                <p id="meal-template-form-title" class="text-[11px] font-bold uppercase tracking-wider text-emerald-300">Tambah Template Menu Baru</p>
+                <p id="meal-template-form-title" class="text-[11px] font-bold uppercase tracking-wider text-emerald-300">Tambah Preset Makanan Favorit</p>
                 <button id="meal-template-cancel-edit" type="button" class="text-[10px] font-semibold text-slate-400 hover:text-white" hidden>Batal Edit</button>
               </div>
               <input id="template-meal-id" type="hidden" value="">
 
               <div>
-                <label for="template-meal-name" class="mb-1 block text-[10px] font-medium text-slate-400">Nama Menu / Takaran</label>
-                <input id="template-meal-name" type="text" maxlength="80" required placeholder="Contoh: 150g Dada Ayam Bakar, 1 Porsi Salad..." class="field py-2 text-xs" autocomplete="off">
+                <label for="template-meal-name" class="mb-1 block text-[10px] font-medium text-slate-400">Nama Makanan / Porsi</label>
+                <input id="template-meal-name" type="text" maxlength="80" required placeholder="Contoh: 150g Dada Ayam, 2 Telur Rebus..." class="field py-2 text-xs" autocomplete="off">
               </div>
 
               <div class="grid grid-cols-2 gap-2.5">
                 <div>
                   <label for="template-meal-calories" class="mb-1 block text-[10px] font-medium text-slate-400">Kalori (kcal)</label>
-                  <input id="template-meal-calories" type="number" inputmode="numeric" min="0" max="20000" step="1" required placeholder="300" class="field py-2 font-mono text-xs">
+                  <input id="template-meal-calories" type="number" inputmode="numeric" min="0" max="20000" step="1" required placeholder="250" class="field py-2 font-mono text-xs">
                 </div>
                 <div>
                   <label for="template-meal-protein" class="mb-1 block text-[10px] font-medium text-slate-400">Protein (g)</label>
@@ -739,14 +747,14 @@
               </div>
 
               <button id="meal-template-submit-btn" type="submit" class="btn-primary w-full py-2.5 text-xs">
-                + Simpan ke Template Menu
+                + Simpan ke Preset Makanan Favorit
               </button>
             </form>
 
             <div>
               <div class="mb-2 flex items-center justify-between gap-2">
-                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Daftar Template Menu Akun Anda</p>
-                <button id="reset-meal-templates-btn" type="button" class="text-[10px] font-semibold text-blue-300 hover:text-blue-200">Reset Default</button>
+                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Daftar Preset Makanan Favorit Anda</p>
+                <button id="reset-meal-templates-btn" type="button" class="text-[10px] font-semibold text-blue-300 hover:text-blue-200">Reset Contoh Dasar</button>
               </div>
               <div id="meal-template-manage-list" class="space-y-2"></div>
             </div>
@@ -763,7 +771,7 @@
           </span>
           <div>
             <h3 class="text-sm font-semibold text-white">Input Makanan Manual</h3>
-            <p class="mt-0.5 text-[11px] text-slate-400">Catat makanan ke log hari ini atau simpan jadi template</p>
+            <p class="mt-0.5 text-[11px] text-slate-400">Catat makanan ke log hari ini atau simpan jadi preset favorit</p>
           </div>
         </div>
 
@@ -784,7 +792,7 @@
           </div>
           <label class="flex cursor-pointer items-center gap-2.5 rounded-xl border border-white/5 bg-slate-950/35 px-3 py-2.5 text-xs text-slate-300 transition hover:border-emerald-400/25">
             <input id="food-save-as-template" type="checkbox" class="h-4 w-4 rounded border-white/20 bg-slate-900 text-emerald-400 focus:ring-emerald-400/50">
-            <span>Simpan juga menu ini sebagai <strong>Template Menu (1-Tap)</strong></span>
+            <span>Simpan juga menu ini ke <strong>Preset Makanan Favorit (1-Tap)</strong></span>
           </label>
           <button type="submit" class="btn-primary flex w-full items-center justify-center gap-2 py-3">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" class="h-4 w-4" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
@@ -812,15 +820,186 @@
       </div>
       <div id="analytics-content" class="space-y-4"></div>
     </section>
+
+    <!-- PROFILE -->
+    <section id="view-profile" class="view space-y-4" data-view="profile" role="tabpanel" aria-labelledby="tab-profile" hidden>
+      <div class="flex items-end justify-between gap-4 px-0.5">
+        <div>
+          <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-400" data-today-date>Hari ini</p>
+          <h2 class="mt-1 text-2xl font-bold tracking-tight text-white">User Profile &amp; Setup</h2>
+          <p class="mt-1 text-xs text-slate-400">Atur data fisik, kalkulator Mifflin-St Jeor, dan Baseline PR Anda.</p>
+        </div>
+        <span class="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-300">
+          <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+          Cloud Profile
+        </span>
+      </div>
+
+      <article class="glass-card p-5 sm:p-6">
+        <form id="profile-page-form" class="space-y-5" novalidate>
+          <!-- A. DATA FISIK DASAR -->
+          <div>
+            <div class="flex items-center gap-2 border-b border-white/5 pb-2.5">
+              <span class="grid h-7 w-7 place-items-center rounded-lg bg-emerald-400/10 text-xs font-bold text-emerald-300">1</span>
+              <h3 class="text-xs font-bold uppercase tracking-wider text-white">Data Fisik Dasar</h3>
+            </div>
+            <div class="mt-3.5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label for="prof-nickname" class="mb-1.5 block text-[11px] font-medium text-slate-400">Nama Panggilan</label>
+                <input id="prof-nickname" type="text" maxlength="50" required placeholder="Contoh: Budi / Alex" class="field">
+              </div>
+              <div class="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label for="prof-age" class="mb-1.5 block text-[11px] font-medium text-slate-400">Umur (tahun)</label>
+                  <input id="prof-age" type="number" inputmode="numeric" min="12" max="100" step="1" required placeholder="24" class="field font-mono">
+                </div>
+                <div>
+                  <label for="prof-gender" class="mb-1.5 block text-[11px] font-medium text-slate-400">Jenis Kelamin</label>
+                  <select id="prof-gender" class="select-field">
+                    <option value="male">Pria</option>
+                    <option value="female">Wanita</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-3 grid grid-cols-3 gap-2.5">
+              <div>
+                <label for="prof-height" class="mb-1.5 block text-[11px] font-medium text-slate-400">Tinggi (cm)</label>
+                <input id="prof-height" type="number" inputmode="decimal" min="100" max="250" step="0.5" required placeholder="172" class="field font-mono">
+              </div>
+              <div>
+                <label for="prof-current-weight" class="mb-1.5 block text-[11px] font-medium text-slate-400">Berat Saat Ini (kg)</label>
+                <input id="prof-current-weight" type="number" inputmode="decimal" min="30" max="300" step="0.1" required placeholder="75.0" class="field font-mono">
+              </div>
+              <div>
+                <label for="prof-target-weight" class="mb-1.5 block text-[11px] font-medium text-slate-400">Target Berat (kg)</label>
+                <input id="prof-target-weight" type="number" inputmode="decimal" min="30" max="300" step="0.1" required placeholder="68.0" class="field font-mono">
+              </div>
+            </div>
+          </div>
+
+          <!-- B. FITNESS GOAL & ACTIVITY LEVEL -->
+          <div>
+            <div class="flex items-center gap-2 border-b border-white/5 pb-2.5">
+              <span class="grid h-7 w-7 place-items-center rounded-lg bg-blue-400/10 text-xs font-bold text-blue-300">2</span>
+              <h3 class="text-xs font-bold uppercase tracking-wider text-white">Fitness Goal &amp; Activity Level</h3>
+            </div>
+            <div class="mt-3.5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label for="prof-goal" class="mb-1.5 block text-[11px] font-medium text-slate-400">Fitness Goal</label>
+                <select id="prof-goal" class="select-field">
+                  <option value="fat_loss">Fat Loss / Cutting (-500 kcal)</option>
+                  <option value="maintenance">Body Recomposition / Maintenance</option>
+                  <option value="muscle_gain">Muscle Gain / Bulking (+300 kcal)</option>
+                </select>
+              </div>
+              <div>
+                <label for="prof-activity" class="mb-1.5 block text-[11px] font-medium text-slate-400">Tingkat Aktivitas</label>
+                <select id="prof-activity" class="select-field">
+                  <option value="sedentary">Sedentary (Jarang olahraga)</option>
+                  <option value="light">Light (1-2x/minggu)</option>
+                  <option value="moderate" selected>Moderate (3-4x/minggu)</option>
+                  <option value="active">Active (5-6x/minggu)</option>
+                  <option value="very_active">Very Active (Atlet/Latihan keras tiap hari)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- C. KALKULATOR OTOMATIS KALORI & PROTEIN (MIFFLIN-ST JEOR) -->
+          <div>
+            <div class="flex items-center justify-between gap-2 border-b border-white/5 pb-2.5">
+              <div class="flex items-center gap-2">
+                <span class="grid h-7 w-7 place-items-center rounded-lg bg-cyan-400/10 text-xs font-bold text-cyan-300">3</span>
+                <h3 class="text-xs font-bold uppercase tracking-wider text-white">Target Kalori &amp; Protein Harian</h3>
+              </div>
+              <span class="text-[10px] text-slate-400">Mifflin-St Jeor / Manual</span>
+            </div>
+
+            <div class="mt-3.5 rounded-2xl border border-cyan-400/20 bg-cyan-400/[0.05] p-3.5">
+              <button id="prof-calc-btn" type="button" class="btn-secondary flex w-full items-center justify-center gap-2 border-cyan-400/30 bg-cyan-400/15 py-2.5 text-xs font-bold text-cyan-200 hover:bg-cyan-400/25">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4" aria-hidden="true">
+                  <rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="16" y1="14" x2="16" y2="18"/><path d="M16 10h.01M12 10h.01M8 10h.01M12 14h.01M8 14h.01M12 18h.01M8 18h.01"/>
+                </svg>
+                Hitung Otomatis Rekomendasi Kalori &amp; Protein
+              </button>
+              <p id="prof-calc-summary" class="mt-2 text-center font-mono text-[10px] text-slate-400">
+                Rumus Mifflin-St Jeor (BMR &times; Activity Multiplier) &amp; Protein 2g/kg BB. Anda tetap bisa mengedit manual di bawah.
+              </p>
+            </div>
+
+            <div class="mt-3 grid grid-cols-2 gap-3">
+              <div>
+                <label for="prof-calories" class="mb-1.5 block text-[11px] font-medium text-slate-400">Target Kalori Harian (kcal)</label>
+                <input id="prof-calories" type="number" inputmode="numeric" min="800" max="10000" step="10" required placeholder="2000" class="field font-mono">
+              </div>
+              <div>
+                <label for="prof-protein" class="mb-1.5 block text-[11px] font-medium text-slate-400">Target Protein Harian (g)</label>
+                <input id="prof-protein" type="number" inputmode="decimal" min="30" max="500" step="1" required placeholder="150" class="field font-mono">
+              </div>
+            </div>
+          </div>
+
+          <!-- D. BASELINE STRENGTH PR (1RM SAAT INI) -->
+          <div>
+            <div class="flex items-center justify-between gap-2 border-b border-white/5 pb-2.5">
+              <div class="flex items-center gap-2">
+                <span class="grid h-7 w-7 place-items-center rounded-lg bg-amber-400/10 text-xs font-bold text-amber-300">4</span>
+                <h3 class="text-xs font-bold uppercase tracking-wider text-white">Baseline Strength PR (1RM Saat Ini)</h3>
+              </div>
+              <span class="text-[10px] text-amber-300">Opsional · Isi 0 jika pemula</span>
+            </div>
+            <p class="mt-2 text-[11px] leading-relaxed text-slate-400">
+              Angka ini menjadi acuan deteksi <strong class="text-amber-300">NEW PR! 🔥</strong> di tab Workout dan akan otomatis naik saat Anda memecahkan rekor baru.
+            </p>
+
+            <div class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <div>
+                <label for="prof-pr-squat" class="mb-1 block text-[10px] font-medium text-slate-400">Back Squat (kg)</label>
+                <input id="prof-pr-squat" type="number" inputmode="decimal" min="0" max="600" step="0.5" value="0" class="field py-2 font-mono text-xs">
+              </div>
+              <div>
+                <label for="prof-pr-bench" class="mb-1 block text-[10px] font-medium text-slate-400">Bench Press (kg)</label>
+                <input id="prof-pr-bench" type="number" inputmode="decimal" min="0" max="600" step="0.5" value="0" class="field py-2 font-mono text-xs">
+              </div>
+              <div>
+                <label for="prof-pr-deadlift" class="mb-1 block text-[10px] font-medium text-slate-400">Deadlift (kg)</label>
+                <input id="prof-pr-deadlift" type="number" inputmode="decimal" min="0" max="600" step="0.5" value="0" class="field py-2 font-mono text-xs">
+              </div>
+              <div>
+                <label for="prof-pr-ohp" class="mb-1 block text-[10px] font-medium text-slate-400">Overhead Press / OHP (kg)</label>
+                <input id="prof-pr-ohp" type="number" inputmode="decimal" min="0" max="400" step="0.5" value="0" class="field py-2 font-mono text-xs">
+              </div>
+              <div>
+                <label for="prof-pr-cj" class="mb-1 block text-[10px] font-medium text-slate-400">Clean &amp; Jerk (kg)</label>
+                <input id="prof-pr-cj" type="number" inputmode="decimal" min="0" max="500" step="0.5" value="0" class="field py-2 font-mono text-xs">
+              </div>
+              <div>
+                <label for="prof-pr-snatch" class="mb-1 block text-[10px] font-medium text-slate-400">Snatch (kg)</label>
+                <input id="prof-pr-snatch" type="number" inputmode="decimal" min="0" max="400" step="0.5" value="0" class="field py-2 font-mono text-xs">
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn-primary flex w-full items-center justify-center gap-2 py-3.5 text-sm">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4" aria-hidden="true">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+            </svg>
+            Simpan Profil
+          </button>
+        </form>
+      </article>
+    </section>
   </main>
 
-  <!-- FIXED BOTTOM NAVIGATION -->
+  <!-- FIXED BOTTOM NAVIGATION (5 TABS) -->
   <nav class="bottom-nav-wrap" aria-label="Navigasi utama">
     <div class="bottom-nav">
-      <div class="grid grid-cols-4 gap-1" role="tablist" aria-label="Tab aplikasi">
+      <div class="grid grid-cols-5 gap-1" role="tablist" aria-label="Tab aplikasi">
         <button id="tab-dashboard" type="button" class="nav-btn active" data-tab-target="dashboard" role="tab" aria-selected="true" aria-controls="view-dashboard">
           <span class="nav-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="h-[21px] w-[21px]" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="h-[20px] w-[20px]" aria-hidden="true">
               <rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>
             </svg>
           </span>
@@ -828,7 +1007,7 @@
         </button>
         <button id="tab-workout" type="button" class="nav-btn" data-tab-target="workout" role="tab" aria-selected="false" aria-controls="view-workout">
           <span class="nav-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="h-[21px] w-[21px]" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="h-[20px] w-[20px]" aria-hidden="true">
               <path d="m6.5 6.5 11 11M3 10l7-7M14 21l7-7M3 14l3-3M18 22l4-4M2 6l4-4"/>
             </svg>
           </span>
@@ -836,7 +1015,7 @@
         </button>
         <button id="tab-diet" type="button" class="nav-btn" data-tab-target="diet" role="tab" aria-selected="false" aria-controls="view-diet">
           <span class="nav-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="h-[21px] w-[21px]" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="h-[20px] w-[20px]" aria-hidden="true">
               <path d="M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-12.22A4.91 4.91 0 0 0 17 5c-2.22 0-4 1.44-5 2-1-.56-2.78-2-5-2a4.9 4.9 0 0 0-5 4.78C2 14 5 22 8 22c1.25 0 2.5-1.06 4-1.06Z"/><path d="M10 2c1 .5 2 2 2 5"/>
             </svg>
           </span>
@@ -844,15 +1023,166 @@
         </button>
         <button id="tab-analytics" type="button" class="nav-btn" data-tab-target="analytics" role="tab" aria-selected="false" aria-controls="view-analytics">
           <span class="nav-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="h-[21px] w-[21px]" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="h-[20px] w-[20px]" aria-hidden="true">
               <path d="M3 3v18h18"/><path d="M7 16v-4M12 16V8M17 16v-7"/>
             </svg>
           </span>
           <span class="nav-label">Analytics</span>
         </button>
+        <button id="tab-profile" type="button" class="nav-btn" data-tab-target="profile" role="tab" aria-selected="false" aria-controls="view-profile">
+          <span class="nav-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="h-[20px] w-[20px]" aria-hidden="true">
+              <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+            </svg>
+          </span>
+          <span class="nav-label">Profile</span>
+        </button>
       </div>
     </div>
   </nav>
+
+  <!-- ONBOARDING WIZARD MODAL (Wajib diisi bagi user baru saat profile.isOnboarded === false) -->
+  <div id="onboarding-modal" class="fixed inset-0 z-50" hidden>
+    <div class="absolute inset-0 bg-slate-950/90 backdrop-blur-md"></div>
+    <div class="modal-panel absolute inset-x-0 bottom-0 mx-auto flex max-h-[94dvh] w-full max-w-xl flex-col overflow-hidden rounded-t-[2rem] border border-emerald-400/25 bg-slate-900 shadow-2xl shadow-slate-950/80 sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2 sm:rounded-[2rem]" role="dialog" aria-modal="true" aria-labelledby="onboarding-title">
+      <div class="border-b border-white/10 bg-slate-950/50 px-5 pb-4 pt-4 sm:px-6 sm:pt-5">
+        <span class="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-emerald-300">
+          Setup Awal Wajib · Akun Baru
+        </span>
+        <h2 id="onboarding-title" class="mt-1.5 text-lg font-bold text-white">Selamat Datang! Atur Profil &amp; Target Anda</h2>
+        <p class="mt-0.5 text-xs text-slate-400">Isi data fisik dan baseline Anda agar kalkulasi kalori, protein, dan PR disesuaikan khusus untuk tubuh Anda.</p>
+      </div>
+
+      <div class="overflow-y-auto px-5 py-5 sm:px-6">
+        <form id="onboarding-form" class="space-y-5" novalidate>
+          <!-- 1. DATA FISIK DASAR -->
+          <div>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-300">1. Data Fisik Dasar</h3>
+            <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label for="onb-nickname" class="mb-1 block text-[11px] font-medium text-slate-300">Nama Panggilan *</label>
+                <input id="onb-nickname" type="text" maxlength="50" required placeholder="Contoh: Budi" class="field py-2 text-xs">
+              </div>
+              <div class="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label for="onb-age" class="mb-1 block text-[11px] font-medium text-slate-300">Umur (thn) *</label>
+                  <input id="onb-age" type="number" inputmode="numeric" min="12" max="100" step="1" required placeholder="24" class="field py-2 font-mono text-xs">
+                </div>
+                <div>
+                  <label for="onb-gender" class="mb-1 block text-[11px] font-medium text-slate-300">Gender *</label>
+                  <select id="onb-gender" class="select-field py-2 text-xs">
+                    <option value="male">Pria</option>
+                    <option value="female">Wanita</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-3 grid grid-cols-3 gap-2.5">
+              <div>
+                <label for="onb-height" class="mb-1 block text-[11px] font-medium text-slate-300">Tinggi (cm) *</label>
+                <input id="onb-height" type="number" inputmode="decimal" min="100" max="250" step="0.5" required placeholder="172" class="field py-2 font-mono text-xs">
+              </div>
+              <div>
+                <label for="onb-current-weight" class="mb-1 block text-[11px] font-medium text-slate-300">Berat Saat Ini (kg) *</label>
+                <input id="onb-current-weight" type="number" inputmode="decimal" min="30" max="300" step="0.1" required placeholder="75.0" class="field py-2 font-mono text-xs">
+              </div>
+              <div>
+                <label for="onb-target-weight" class="mb-1 block text-[11px] font-medium text-slate-300">Target Berat (kg) *</label>
+                <input id="onb-target-weight" type="number" inputmode="decimal" min="30" max="300" step="0.1" required placeholder="68.0" class="field py-2 font-mono text-xs">
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. FITNESS GOAL & ACTIVITY -->
+          <div class="border-t border-white/5 pt-4">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-blue-300">2. Fitness Goal &amp; Tingkat Aktivitas</h3>
+            <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label for="onb-goal" class="mb-1 block text-[11px] font-medium text-slate-300">Fitness Goal</label>
+                <select id="onb-goal" class="select-field py-2 text-xs">
+                  <option value="fat_loss">Fat Loss / Cutting (-500 kcal)</option>
+                  <option value="maintenance">Body Recomposition / Maintenance</option>
+                  <option value="muscle_gain">Muscle Gain / Bulking (+300 kcal)</option>
+                </select>
+              </div>
+              <div>
+                <label for="onb-activity" class="mb-1 block text-[11px] font-medium text-slate-300">Tingkat Aktivitas</label>
+                <select id="onb-activity" class="select-field py-2 text-xs">
+                  <option value="sedentary">Sedentary (Jarang olahraga)</option>
+                  <option value="light">Light (1-2x/minggu)</option>
+                  <option value="moderate" selected>Moderate (3-4x/minggu)</option>
+                  <option value="active">Active (5-6x/minggu)</option>
+                  <option value="very_active">Very Active (Atlet/Latihan keras tiap hari)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. KALKULATOR KALORI & PROTEIN -->
+          <div class="border-t border-white/5 pt-4">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-cyan-300">3. Kalkulator Target Kalori &amp; Protein</h3>
+            <div class="mt-2.5 rounded-2xl border border-cyan-400/20 bg-cyan-400/[0.05] p-3">
+              <button id="onb-calc-btn" type="button" class="btn-secondary flex w-full items-center justify-center gap-2 border-cyan-400/30 bg-cyan-400/15 py-2.5 text-xs font-bold text-cyan-200 hover:bg-cyan-400/25">
+                Hitung Otomatis Rekomendasi Kalori &amp; Protein
+              </button>
+              <p id="onb-calc-summary" class="mt-1.5 text-center font-mono text-[10px] text-slate-400">
+                Isi umur, tinggi, dan berat di atas lalu klik tombol untuk menghitung otomatis (Mifflin-St Jeor).
+              </p>
+            </div>
+            <div class="mt-3 grid grid-cols-2 gap-3">
+              <div>
+                <label for="onb-calories" class="mb-1 block text-[11px] font-medium text-slate-300">Target Kalori (kcal) *</label>
+                <input id="onb-calories" type="number" inputmode="numeric" min="800" max="10000" step="10" required placeholder="2000" class="field py-2 font-mono text-xs">
+              </div>
+              <div>
+                <label for="onb-protein" class="mb-1 block text-[11px] font-medium text-slate-300">Target Protein (g) *</label>
+                <input id="onb-protein" type="number" inputmode="decimal" min="30" max="500" step="1" required placeholder="150" class="field py-2 font-mono text-xs">
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. BASELINE STRENGTH PR -->
+          <div class="border-t border-white/5 pt-4">
+            <div class="flex items-center justify-between gap-2">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-amber-300">4. Baseline Strength PR (1RM Saat Ini)</h3>
+              <span class="text-[10px] text-slate-400">Opsional (Isi 0 bagi pemula)</span>
+            </div>
+            <div class="mt-2.5 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+              <div>
+                <label for="onb-pr-squat" class="mb-1 block text-[10px] font-medium text-slate-400">Back Squat (kg)</label>
+                <input id="onb-pr-squat" type="number" inputmode="decimal" min="0" max="600" step="0.5" value="0" class="field py-2 font-mono text-xs">
+              </div>
+              <div>
+                <label for="onb-pr-bench" class="mb-1 block text-[10px] font-medium text-slate-400">Bench Press (kg)</label>
+                <input id="onb-pr-bench" type="number" inputmode="decimal" min="0" max="600" step="0.5" value="0" class="field py-2 font-mono text-xs">
+              </div>
+              <div>
+                <label for="onb-pr-deadlift" class="mb-1 block text-[10px] font-medium text-slate-400">Deadlift (kg)</label>
+                <input id="onb-pr-deadlift" type="number" inputmode="decimal" min="0" max="600" step="0.5" value="0" class="field py-2 font-mono text-xs">
+              </div>
+              <div>
+                <label for="onb-pr-ohp" class="mb-1 block text-[10px] font-medium text-slate-400">Overhead Press (kg)</label>
+                <input id="onb-pr-ohp" type="number" inputmode="decimal" min="0" max="400" step="0.5" value="0" class="field py-2 font-mono text-xs">
+              </div>
+              <div>
+                <label for="onb-pr-cj" class="mb-1 block text-[10px] font-medium text-slate-400">Clean &amp; Jerk (kg)</label>
+                <input id="onb-pr-cj" type="number" inputmode="decimal" min="0" max="500" step="0.5" value="0" class="field py-2 font-mono text-xs">
+              </div>
+              <div>
+                <label for="onb-pr-snatch" class="mb-1 block text-[10px] font-medium text-slate-400">Snatch (kg)</label>
+                <input id="onb-pr-snatch" type="number" inputmode="decimal" min="0" max="400" step="0.5" value="0" class="field py-2 font-mono text-xs">
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn-primary flex w-full items-center justify-center gap-2 py-3.5 text-sm">
+            Simpan Profil &amp; Mulai Gunakan Aplikasi
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
 
   <!-- SETTINGS MODAL -->
   <div id="settings-modal" class="fixed inset-0 z-50" hidden>
@@ -954,6 +1284,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
-  <script src="app.js?v=2.2" defer></script>
+  <script src="app.js?v=2.3" defer></script>
 </body>
 </html>

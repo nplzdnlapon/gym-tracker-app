@@ -2,20 +2,59 @@
   "use strict";
 
   const STORAGE_KEY = "powerbuild.tracker.v1";
-  const STATE_VERSION = 1;
-  const TAB_IDS = ["dashboard", "workout", "diet", "analytics"];
+  const STATE_VERSION = 2;
+  const TAB_IDS = ["dashboard", "workout", "diet", "analytics", "profile"];
   const TAB_TITLES = {
     dashboard: "Dashboard",
-    workout: "Workout Plan",
+    workout: "Workout Log",
     diet: "Diet & Nutrisi",
-    analytics: "Analytics"
+    analytics: "Analytics",
+    profile: "User Profile"
   };
 
+  const DEFAULT_BASELINE_PRS = Object.freeze({
+    squat: 0,
+    benchPress: 0,
+    deadlift: 0,
+    overheadPress: 0,
+    cleanAndJerk: 0,
+    snatch: 0
+  });
+
   const DEFAULT_PROFILE = Object.freeze({
-    startWeight: 94,
-    targetWeight: 80,
-    calorieTarget: 2350,
-    proteinTarget: 180
+    isOnboarded: false,
+    nickname: "",
+    age: 0,
+    gender: "male",
+    heightCm: 0,
+    currentWeight: 0,
+    startWeight: 0,
+    targetWeight: 0,
+    fitnessGoal: "fat_loss",
+    activityLevel: "moderate",
+    calorieTarget: 0,
+    proteinTarget: 0,
+    baselinePRs: { ...DEFAULT_BASELINE_PRS }
+  });
+
+  const ACTIVITY_MULTIPLIERS = Object.freeze({
+    sedentary: 1.2,
+    light: 1.375,
+    moderate: 1.55,
+    active: 1.725,
+    very_active: 1.9
+  });
+
+  const GOAL_LABELS = Object.freeze({
+    fat_loss: "Fat Loss / Cutting",
+    maintenance: "Recomp / Maintenance",
+    muscle_gain: "Muscle Gain / Bulking"
+  });
+
+  const GOAL_SHORT_LABELS = Object.freeze({
+    fat_loss: "Cutting",
+    maintenance: "Maintenance",
+    muscle_gain: "Bulking"
   });
 
   const DEFAULT_SPLITS = Object.freeze([
@@ -119,10 +158,16 @@
 
   const QUICK_MEALS = Object.freeze([
     {
-      id: "chicken-breast-200",
-      name: "200g Dada Ayam",
-      calories: 330,
-      protein: 62
+      id: "chicken-breast-150",
+      name: "150g Dada Ayam",
+      calories: 248,
+      protein: 46
+    },
+    {
+      id: "boiled-eggs-2",
+      name: "2 Telur Rebus",
+      calories: 155,
+      protein: 13
     },
     {
       id: "white-rice-150",
@@ -131,34 +176,10 @@
       protein: 4
     },
     {
-      id: "overnight-oats-protein-milk",
-      name: "Overnight Oats + Protein Milk",
-      calories: 350,
-      protein: 25
-    },
-    {
-      id: "boiled-eggs-4",
-      name: "4 Telur Rebus",
-      calories: 310,
-      protein: 25
-    },
-    {
-      id: "dory-tilapia-150",
-      name: "150g Ikan Dori/Nila",
-      calories: 190,
-      protein: 35
-    },
-    {
-      id: "tempeh-tofu-2",
-      name: "2 Potong Tempe/Tahu",
-      calories: 160,
-      protein: 14
-    },
-    {
-      id: "whey-banana-1",
-      name: "1 Scoop Whey + Pisang",
-      calories: 225,
-      protein: 25
+      id: "whey-protein-1",
+      name: "1 Scoop Whey Protein",
+      calories: 120,
+      protein: 24
     }
   ]);
 
@@ -192,19 +213,6 @@
     "Lat Pulldown",
     "Incline DB Press"
   ]);
-
-  const BASELINE_PRS = Object.freeze({
-    "squat": 140,
-    "bench press": 100,
-    "conventional deadlift": 192,
-    "sumo deadlift": 192,
-    "deadlift": 192,
-    "clean & jerk": 85,
-    "snatch": 65,
-    "t-bar row": 80,
-    "overhead press": 60,
-    "incline db press": 36
-  });
 
   const CARDIO_ACTIVITIES = Object.freeze([
     "Incline Treadmill Walk",
@@ -421,10 +429,57 @@
     return String(name ?? "").trim().toLowerCase().replace(/\s+/g, " ");
   }
 
-  function getBaselinePR(exerciseName) {
+  function mapExerciseToPRKey(exerciseName) {
     const key = normalizeExerciseKey(exerciseName);
-    if (key in BASELINE_PRS) return BASELINE_PRS[key];
-    return null;
+    if (!key) return "";
+    if (key === "squat" || key === "back squat" || key === "barbell squat") return "squat";
+    if (key === "bench press" || key === "barbell bench press" || key === "flat bench press") return "benchPress";
+    if (key === "deadlift" || key === "conventional deadlift" || key === "sumo deadlift") return "deadlift";
+    if (key === "overhead press" || key === "ohp" || key === "military press" || key === "shoulder press") return "overheadPress";
+    if (key.includes("clean") && key.includes("jerk")) return "cleanAndJerk";
+    if (key === "snatch" || key === "power snatch") return "snatch";
+    return key;
+  }
+
+  function getBaselinePR(exerciseName, profileSource = state?.profile) {
+    const prKey = mapExerciseToPRKey(exerciseName);
+    if (!prKey) return 0;
+    const prs = profileSource?.baselinePRs;
+    if (prs && typeof prs === "object" && prKey in prs) {
+      const val = Number(prs[prKey]);
+      return Number.isFinite(val) && val >= 0 ? val : 0;
+    }
+    return 0;
+  }
+
+  function calculateMifflinStJeor({ age, gender, heightCm, weightKg, fitnessGoal, activityLevel }) {
+    const a = validNumber(age, 12, 100);
+    const h = validNumber(heightCm, 100, 250);
+    const w = validNumber(weightKg, 30, 300);
+    if (a === null || h === null || w === null) return null;
+
+    const bmr = gender === "female"
+      ? 10 * w + 6.25 * h - 5 * a - 161
+      : 10 * w + 6.25 * h - 5 * a + 5;
+    const multiplier = ACTIVITY_MULTIPLIERS[activityLevel] ?? 1.55;
+    const tdee = bmr * multiplier;
+
+    let adjusted = tdee;
+    if (fitnessGoal === "fat_loss") {
+      adjusted = tdee - 500;
+    } else if (fitnessGoal === "muscle_gain") {
+      adjusted = tdee + 300;
+    }
+
+    const calories = Math.max(1000, Math.round(adjusted / 10) * 10);
+    const protein = Math.max(40, Math.round(w * 2));
+
+    return {
+      bmr: Math.round(bmr),
+      tdee: Math.round(tdee),
+      calories,
+      protein
+    };
   }
 
   function cloneDefaultSplits() {
@@ -506,27 +561,40 @@
     return list;
   }
 
+  function sanitizeBaselinePRs(rawPRs) {
+    const clean = { ...DEFAULT_BASELINE_PRS };
+    if (!rawPRs || typeof rawPRs !== "object") return clean;
+    Object.entries(rawPRs).forEach(([key, val]) => {
+      const num = validNumber(val, 0, 600);
+      if (num !== null) {
+        clean[key] = round1(num);
+      }
+    });
+    return clean;
+  }
+
   function createDefaultState() {
     const now = new Date().toISOString();
     const today = todayKey();
+    const starterPresets = cloneDefaultMeals();
     return {
       version: STATE_VERSION,
-      profile: { ...DEFAULT_PROFILE },
-      weights: [
-        {
-          date: today,
-          weight: DEFAULT_PROFILE.startWeight,
-          updatedAt: now
-        }
-      ],
+      profile: {
+        ...DEFAULT_PROFILE,
+        baselinePRs: { ...DEFAULT_BASELINE_PRS }
+      },
+      weights: [],
       foodLogs: [],
+      logs: [],
       workoutLogs: [],
+      workouts: [],
       cardioLogs: [],
       bodyNotes: [],
       customSplits: cloneDefaultSplits(),
       customExercises: [],
       customCardioActivities: [],
-      customMeals: cloneDefaultMeals(),
+      customPresets: starterPresets,
+      customMeals: starterPresets,
       selectedSplits: { [today]: 1 },
       createdAt: now
     };
@@ -545,7 +613,21 @@
       throw new Error("Struktur data tidak dikenali.");
     }
 
-    const knownKeys = ["profile", "weights", "foodLogs", "workoutLogs", "cardioLogs", "bodyNotes", "customSplits", "customExercises", "customMeals", "selectedSplits"];
+    const knownKeys = [
+      "profile",
+      "weights",
+      "foodLogs",
+      "logs",
+      "workoutLogs",
+      "workouts",
+      "cardioLogs",
+      "bodyNotes",
+      "customSplits",
+      "customExercises",
+      "customPresets",
+      "customMeals",
+      "selectedSplits"
+    ];
     if (strict && !knownKeys.some((key) => key in source)) {
       throw new Error("File JSON bukan backup Gym Tracker App by LapoN.");
     }
@@ -568,109 +650,128 @@
       });
     }
 
-    let weights = [...weightMap.values()].sort((a, b) => a.date.localeCompare(b.date));
-    if (weights.length === 0) {
-      weights = [
-        {
-          date: todayKey(),
-          weight: DEFAULT_PROFILE.startWeight,
-          updatedAt: new Date().toISOString()
-        }
-      ];
-    }
+    const weights = [...weightMap.values()].sort((a, b) => a.date.localeCompare(b.date));
 
     const rawProfile = source.profile && typeof source.profile === "object"
       ? source.profile
       : {};
-    const earliestWeight = weights[0].weight;
-    const startWeight =
-      validNumber(rawProfile.startWeight, 30, 300) ?? earliestWeight ?? DEFAULT_PROFILE.startWeight;
-    const targetWeight =
-      validNumber(rawProfile.targetWeight, 30, 300) ?? DEFAULT_PROFILE.targetWeight;
-    const calorieTarget =
-      validNumber(rawProfile.calorieTarget, 800, 10000) ?? DEFAULT_PROFILE.calorieTarget;
-    const proteinTarget =
-      validNumber(rawProfile.proteinTarget, 30, 500) ?? DEFAULT_PROFILE.proteinTarget;
+
+    const isOnboarded = Boolean(rawProfile.isOnboarded);
+    const nickname = typeof rawProfile.nickname === "string" ? rawProfile.nickname.trim().slice(0, 50) : "";
+    const age = validNumber(rawProfile.age, 12, 100) ?? 0;
+    const gender = rawProfile.gender === "female" ? "female" : "male";
+    const heightCm = validNumber(rawProfile.heightCm, 100, 250) ?? 0;
+
+    const earliestWeight = weights.length > 0 ? weights[0].weight : 0;
+    const latestWeight = weights.length > 0 ? weights[weights.length - 1].weight : 0;
+
+    const currentWeight = validNumber(rawProfile.currentWeight, 30, 300) ?? latestWeight ?? 0;
+    const startWeight = validNumber(rawProfile.startWeight, 30, 300) ?? (earliestWeight > 0 ? earliestWeight : currentWeight);
+    const targetWeight = validNumber(rawProfile.targetWeight, 30, 300) ?? 0;
+    const fitnessGoal = ["fat_loss", "maintenance", "muscle_gain"].includes(rawProfile.fitnessGoal)
+      ? rawProfile.fitnessGoal
+      : "fat_loss";
+    const activityLevel = Object.prototype.hasOwnProperty.call(ACTIVITY_MULTIPLIERS, rawProfile.activityLevel)
+      ? rawProfile.activityLevel
+      : "moderate";
+    const calorieTarget = validNumber(rawProfile.calorieTarget, 800, 10000) ?? 0;
+    const proteinTarget = validNumber(rawProfile.proteinTarget, 30, 500) ?? 0;
+    const baselinePRs = sanitizeBaselinePRs(rawProfile.baselinePRs);
 
     const profile = {
+      isOnboarded,
+      nickname,
+      age: Math.round(age),
+      gender,
+      heightCm: round1(heightCm),
+      currentWeight: round1(currentWeight),
       startWeight: round1(startWeight),
       targetWeight: round1(targetWeight),
+      fitnessGoal,
+      activityLevel,
       calorieTarget: Math.round(calorieTarget),
-      proteinTarget: round1(proteinTarget)
+      proteinTarget: round1(proteinTarget),
+      baselinePRs
     };
 
+    const rawFoodArray = Array.isArray(source.foodLogs)
+      ? source.foodLogs
+      : Array.isArray(source.logs)
+        ? source.logs
+        : [];
     const seenFoodIds = new Set();
     const foodLogs = [];
-    if (Array.isArray(source.foodLogs)) {
-      source.foodLogs.forEach((item) => {
-        if (!item || typeof item !== "object") return;
-        const key = item.date;
-        const name = typeof item.name === "string" ? item.name.trim().slice(0, 80) : "";
-        const calories = validNumber(item.calories, 0, 20000);
-        const protein = validNumber(item.protein, 0, 1000);
-        if (!isValidDateKey(key) || !name || calories === null || protein === null) return;
+    rawFoodArray.forEach((item) => {
+      if (!item || typeof item !== "object") return;
+      const key = item.date;
+      const name = typeof item.name === "string" ? item.name.trim().slice(0, 80) : "";
+      const calories = validNumber(item.calories, 0, 20000);
+      const protein = validNumber(item.protein, 0, 1000);
+      if (!isValidDateKey(key) || !name || calories === null || protein === null) return;
 
-        let id = normalizeId(item.id);
-        while (seenFoodIds.has(id)) id = uid();
-        seenFoodIds.add(id);
+      let id = normalizeId(item.id);
+      while (seenFoodIds.has(id)) id = uid();
+      seenFoodIds.add(id);
 
-        const createdAt = !Number.isNaN(new Date(item.createdAt).getTime())
-          ? new Date(item.createdAt).toISOString()
-          : `${key}T12:00:00.000Z`;
+      const createdAt = !Number.isNaN(new Date(item.createdAt).getTime())
+        ? new Date(item.createdAt).toISOString()
+        : `${key}T12:00:00.000Z`;
 
-        foodLogs.push({
-          id,
-          date: key,
-          name,
-          calories: Math.round(calories),
-          protein: round1(protein),
-          createdAt
-        });
+      foodLogs.push({
+        id,
+        date: key,
+        name,
+        calories: Math.round(calories),
+        protein: round1(protein),
+        createdAt
       });
-    }
+    });
 
+    const rawWorkoutArray = Array.isArray(source.workoutLogs)
+      ? source.workoutLogs
+      : Array.isArray(source.workouts)
+        ? source.workouts
+        : [];
     const seenWorkoutIds = new Set();
     const workoutLogs = [];
-    if (Array.isArray(source.workoutLogs)) {
-      source.workoutLogs.forEach((item) => {
-        if (!item || typeof item !== "object") return;
-        const key = item.date;
-        const exercise = typeof item.exercise === "string" ? item.exercise.trim().slice(0, 80) : "";
-        const splitId = Number.isInteger(Number(item.splitId)) && Number(item.splitId) >= 1 && Number(item.splitId) <= 7
-          ? Number(item.splitId)
-          : 1;
-        const weight = validNumber(item.weight, 0, 600);
-        const sets = validNumber(item.sets, 1, 30);
-        const reps = validNumber(item.reps, 1, 100);
-        const rpe = validNumber(item.rpe, 6, 10);
-        if (!isValidDateKey(key) || !exercise || weight === null || sets === null || reps === null || rpe === null) return;
+    rawWorkoutArray.forEach((item) => {
+      if (!item || typeof item !== "object") return;
+      const key = item.date;
+      const exercise = typeof item.exercise === "string" ? item.exercise.trim().slice(0, 80) : "";
+      const splitId = Number.isInteger(Number(item.splitId)) && Number(item.splitId) >= 1 && Number(item.splitId) <= 7
+        ? Number(item.splitId)
+        : 1;
+      const weight = validNumber(item.weight, 0, 600);
+      const sets = validNumber(item.sets, 1, 30);
+      const reps = validNumber(item.reps, 1, 100);
+      const rpe = validNumber(item.rpe, 6, 10);
+      if (!isValidDateKey(key) || !exercise || weight === null || sets === null || reps === null || rpe === null) return;
 
-        let id = normalizeId(item.id);
-        while (seenWorkoutIds.has(id)) id = uid();
-        seenWorkoutIds.add(id);
+      let id = normalizeId(item.id);
+      while (seenWorkoutIds.has(id)) id = uid();
+      seenWorkoutIds.add(id);
 
-        const createdAt = !Number.isNaN(new Date(item.createdAt).getTime())
-          ? new Date(item.createdAt).toISOString()
-          : `${key}T12:00:00.000Z`;
+      const createdAt = !Number.isNaN(new Date(item.createdAt).getTime())
+        ? new Date(item.createdAt).toISOString()
+        : `${key}T12:00:00.000Z`;
 
-        const baseline = getBaselinePR(exercise);
-        const isPR = Boolean(item.isPR) || (baseline !== null && weight > baseline);
+      const est1RM = calculateEpley1RM(weight, reps);
+      const isPR = Boolean(item.isPR);
 
-        workoutLogs.push({
-          id,
-          date: key,
-          splitId,
-          exercise,
-          weight: round1(weight),
-          sets: Math.round(sets),
-          reps: Math.round(reps),
-          rpe: round1(rpe),
-          est1RM: calculateEpley1RM(weight, reps),
-          isPR,
-          createdAt
-        });
+      workoutLogs.push({
+        id,
+        date: key,
+        splitId,
+        exercise,
+        weight: round1(weight),
+        sets: Math.round(sets),
+        reps: Math.round(reps),
+        rpe: round1(rpe),
+        est1RM,
+        isPR,
+        createdAt
       });
-    }
+    });
 
     const seenCardioIds = new Set();
     const cardioLogs = [];
@@ -754,7 +855,10 @@
       });
     }
 
-    const customMeals = sanitizeCustomMeals(source.customMeals);
+    const rawPresets = Array.isArray(source.customPresets)
+      ? source.customPresets
+      : source.customMeals;
+    const customPresets = sanitizeCustomMeals(rawPresets);
 
     const selectedSplits = {};
     if (source.selectedSplits && typeof source.selectedSplits === "object") {
@@ -772,13 +876,16 @@
       profile,
       weights,
       foodLogs,
+      logs: foodLogs,
       workoutLogs,
+      workouts: workoutLogs,
       cardioLogs,
       bodyNotes,
       customSplits,
       customExercises,
       customCardioActivities,
-      customMeals,
+      customPresets,
+      customMeals: customPresets,
       selectedSplits,
       createdAt: typeof source.createdAt === "string" ? source.createdAt : new Date().toISOString()
     };
@@ -869,9 +976,10 @@
 
   function getLatestWeightEntry() {
     if (!Array.isArray(state.weights) || state.weights.length === 0) {
+      const fallbackWeight = state.profile.currentWeight || state.profile.startWeight || 0;
       return {
         date: todayKey(),
-        weight: state.profile.startWeight,
+        weight: fallbackWeight,
         updatedAt: new Date().toISOString()
       };
     }
@@ -976,20 +1084,62 @@
   }
 
   function getWeightProgress() {
-    const { startWeight, targetWeight } = state.profile;
     const current = getLatestWeightEntry().weight;
-    const totalToLose = startWeight - targetWeight;
-    const lost = startWeight - current;
-    const percentage = totalToLose > 0
-      ? clamp((lost / totalToLose) * 100, 0, 100)
-      : 0;
+    const startWeight = state.profile.startWeight || current || 0;
+    const targetWeight = state.profile.targetWeight || 0;
+    const totalSpan = Math.abs(startWeight - targetWeight);
+
+    if (!startWeight || !targetWeight) {
+      return {
+        current,
+        startWeight,
+        targetWeight,
+        lost: 0,
+        remaining: 0,
+        percentage: 0,
+        mode: "unset"
+      };
+    }
+
+    if (totalSpan < 0.05) {
+      const diff = Math.abs(current - targetWeight);
+      return {
+        current,
+        startWeight,
+        targetWeight,
+        lost: 0,
+        remaining: round1(diff),
+        percentage: diff <= 0.5 ? 100 : clamp(100 - diff * 15, 0, 100),
+        mode: "maintenance"
+      };
+    }
+
+    if (targetWeight < startWeight) {
+      const lost = startWeight - current;
+      const remaining = Math.max(round1(current - targetWeight), 0);
+      const percentage = clamp((lost / totalSpan) * 100, 0, 100);
+      return {
+        current,
+        startWeight,
+        targetWeight,
+        lost: round1(lost),
+        remaining,
+        percentage,
+        mode: "cutting"
+      };
+    }
+
+    const gained = current - startWeight;
+    const remaining = Math.max(round1(targetWeight - current), 0);
+    const percentage = clamp((gained / totalSpan) * 100, 0, 100);
     return {
       current,
       startWeight,
       targetWeight,
-      lost,
-      remaining: Math.max(current - targetWeight, 0),
-      percentage
+      lost: round1(gained),
+      remaining,
+      percentage,
+      mode: "bulking"
     };
   }
 
@@ -1239,6 +1389,9 @@
   }
 
   function getActiveMeals() {
+    if (state && Array.isArray(state.customPresets)) {
+      return state.customPresets;
+    }
     if (state && Array.isArray(state.customMeals)) {
       return state.customMeals;
     }
@@ -1310,27 +1463,63 @@
     }
   }
 
+  function renderProfileStatus() {
+    const nickname = state.profile.nickname || "";
+    const goalLabel = GOAL_SHORT_LABELS[state.profile.fitnessGoal] || "Personal Goal";
+
+    if (els.headerNicknameLabel) {
+      els.headerNicknameLabel.textContent = nickname || "Profile";
+    }
+    if (els.dashUserGreeting) {
+      els.dashUserGreeting.textContent = nickname
+        ? `Halo, ${nickname}! Pantau progres Anda hari ini.`
+        : "Pantau berat badan, nutrisi, dan latihan Anda";
+    }
+    if (els.dashGoalBadge) {
+      els.dashGoalBadge.textContent = goalLabel;
+    }
+    if (els.dietGoalBadge) {
+      els.dietGoalBadge.textContent = goalLabel;
+    }
+  }
+
   function renderWeightCard() {
     const latest = getLatestWeightEntry();
     const previous = getPreviousWeightEntry();
     const progress = getWeightProgress();
-    const target = state.profile.targetWeight;
+    const target = state.profile.targetWeight || 0;
 
-    els.currentWeight.textContent = formatWeight(latest.weight);
-    els.targetWeight.textContent = formatNumber(target);
-    els.targetWeightSide.textContent = formatNumber(target);
-    els.weightStart.textContent = formatNumber(progress.startWeight);
+    els.currentWeight.textContent = latest.weight > 0 ? formatWeight(latest.weight) : "0,0";
+    els.targetWeight.textContent = target > 0 ? formatNumber(target) : "—";
+    els.targetWeightSide.textContent = target > 0 ? formatNumber(target) : "—";
+    els.weightStart.textContent = progress.startWeight > 0 ? formatNumber(progress.startWeight) : "0";
     els.weightProgressLabel.textContent = `${Math.round(progress.percentage)}%`;
     els.weightProgressBar.style.width = `${progress.percentage}%`;
+
+    if (els.weightProgressTitle) {
+      if (progress.mode === "cutting") {
+        els.weightProgressTitle.textContent = "Progres penurunan";
+      } else if (progress.mode === "bulking") {
+        els.weightProgressTitle.textContent = "Progres kenaikan";
+      } else if (progress.mode === "maintenance") {
+        els.weightProgressTitle.textContent = "Stabilitas berat badan";
+      } else {
+        els.weightProgressTitle.textContent = "Progres menuju target";
+      }
+    }
 
     const progressTrack = els.weightProgressBar.parentElement;
     if (progressTrack) {
       progressTrack.setAttribute("aria-valuenow", String(Math.round(progress.percentage)));
     }
 
-    els.weightRemaining.textContent = progress.remaining <= 0
-      ? "Target tercapai — pertahankan!"
-      : `${formatWeight(progress.remaining)} kg lagi menuju target`;
+    if (progress.mode === "unset") {
+      els.weightRemaining.textContent = "Lengkapi profil untuk mengatur target berat";
+    } else if (progress.remaining <= 0) {
+      els.weightRemaining.textContent = "Target tercapai — pertahankan!";
+    } else {
+      els.weightRemaining.textContent = `${formatWeight(progress.remaining)} kg lagi menuju target`;
+    }
 
     const badgeBase = "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ";
     if (previous) {
@@ -1354,7 +1543,8 @@
       : "Belum ada update hari ini.";
 
     if (document.activeElement !== els.weightInput) {
-      els.weightInput.value = String(round1(todayEntry?.weight ?? latest.weight));
+      const prefill = round1(todayEntry?.weight ?? latest.weight);
+      els.weightInput.value = prefill > 0 ? String(prefill) : "";
     }
 
     const chartEntries = state.weights.slice(-7);
@@ -1520,30 +1710,31 @@
     const norm = normalizeExerciseKey(exerciseName);
     const baseline = getBaselinePR(exerciseName);
     let bestLogged = 0;
+    let bestLogged1RM = 0;
 
     if (norm && Array.isArray(state.workoutLogs)) {
       state.workoutLogs.forEach((log) => {
         if (excludeId && log.id === excludeId) return;
         if (normalizeExerciseKey(log.exercise) === norm) {
-          bestLogged = Math.max(bestLogged, Number(log.weight) || 0);
+          const w = Number(log.weight) || 0;
+          const e1rm = Number(log.est1RM) > 0 ? Number(log.est1RM) : calculateEpley1RM(w, log.reps);
+          bestLogged = Math.max(bestLogged, w);
+          bestLogged1RM = Math.max(bestLogged1RM, e1rm);
         }
       });
     }
 
-    const threshold = baseline !== null
-      ? Math.max(baseline, bestLogged)
-      : bestLogged > 0
-        ? bestLogged
-        : null;
-
-    return { baseline, bestLogged, threshold };
+    const threshold = Math.max(baseline, bestLogged);
+    return { baseline, bestLogged, bestLogged1RM, threshold };
   }
 
   function isLogPR(log) {
     if (!log) return false;
+    if (log.isPR) return true;
     const baseline = getBaselinePR(log.exercise);
-    if (baseline !== null && Number(log.weight) > baseline) return true;
-    return Boolean(log.isPR);
+    const est1RM = Number(log.est1RM) > 0 ? Number(log.est1RM) : calculateEpley1RM(log.weight, log.reps);
+    if (baseline > 0 && (Number(log.weight) > baseline || est1RM > baseline)) return true;
+    return false;
   }
 
   function getTodayBodyNote() {
@@ -1559,18 +1750,19 @@
   function updateWorkoutLive1RM() {
     if (!els.workoutEst1RM) return;
     const exercise = getActiveExerciseInput();
-    const { baseline, bestLogged, threshold } = getExerciseBestBefore(exercise);
+    const { baseline, bestLogged, bestLogged1RM, threshold } = getExerciseBestBefore(exercise);
+    const prKey = mapExerciseToPRKey(exercise);
 
     if (els.workoutPrBaselineHint) {
-      if (baseline !== null) {
+      if (baseline > 0) {
         const currentRecord = Math.max(baseline, bestLogged);
         els.workoutPrBaselineHint.textContent = currentRecord > baseline
-          ? `Rekor: ${formatMacro(currentRecord)} kg (Base ${formatMacro(baseline)} kg)`
-          : `Baseline: ${formatMacro(baseline)} kg`;
+          ? `PR Saat Ini: ${formatMacro(currentRecord)} kg`
+          : `Baseline PR: ${formatMacro(baseline)} kg`;
       } else if (bestLogged > 0) {
         els.workoutPrBaselineHint.textContent = `Rekor: ${formatMacro(bestLogged)} kg`;
       } else {
-        els.workoutPrBaselineHint.textContent = exercise ? "Target PR Baru" : "Pilih Gerakan";
+        els.workoutPrBaselineHint.textContent = exercise ? "Baseline PR: 0 kg (Siap Cetak PR)" : "Pilih Gerakan";
       }
     }
 
@@ -1591,7 +1783,9 @@
 
     const est1RM = calculateEpley1RM(weight, reps);
     const totalVolume = Math.round(weight * sets * reps);
-    const isPRCandidate = threshold !== null && weight > threshold;
+    const isPRCandidate = threshold > 0
+      ? (weight > threshold || est1RM > Math.max(baseline, bestLogged1RM))
+      : Boolean(prKey && weight > 0);
 
     els.workoutEst1RM.textContent = formatWeight(est1RM);
     els.workoutVolumePreview.textContent = `${formatMacro(weight)} × (1 + ${Math.round(reps)}/30) · Vol ${formatNumber(totalVolume)} kg`;
@@ -1684,7 +1878,7 @@
           </span>
           <div class="min-w-0">
             <p class="text-xs font-semibold text-slate-300">Belum ada riwayat latihan tercatat</p>
-            <p class="mt-1 text-[10px] leading-relaxed text-slate-500">Catat angkatan beban, sesi cardio/active recovery, atau kondisi fisik di atas. Badge <span class="font-bold text-amber-300">PR!</span> akan menyala otomatis saat angkatan melewati baseline (mis. Squat &gt; 140 kg atau Deadlift &gt; 192 kg).</p>
+            <p class="mt-1 text-[10px] leading-relaxed text-slate-500">Catat angkatan beban, sesi cardio/active recovery, atau kondisi fisik di atas. Badge <span class="font-bold text-amber-300">NEW PR! 🔥</span> akan menyala otomatis saat angkatan atau Est. 1RM melewati Baseline PR di profil Anda.</p>
           </div>
         </div>
       `;
@@ -1731,8 +1925,8 @@
             const pr = isLogPR(log);
             const baseline = getBaselinePR(log.exercise);
             const splitObj = getSplit(log.splitId);
-            const prDiff = baseline !== null && log.weight > baseline
-              ? `+${formatMacro(round1(log.weight - baseline))} kg dari baseline ${formatMacro(baseline)} kg`
+            const prDiff = pr
+              ? `Rekor PR untuk ${log.exercise} (Baseline PR saat ini: ${formatMacro(baseline)} kg)`
               : "Rekor angkatan terbaik baru!";
 
             return `
@@ -1746,7 +1940,7 @@
                   <div class="flex flex-wrap items-center gap-1.5">
                     <h5 class="text-xs font-semibold text-white">${escapeHTML(log.exercise)}</h5>
                     ${splitObj ? `<span class="rounded-md border border-white/10 bg-white/5 px-1.5 py-0.5 text-[9px] font-semibold text-slate-400">${escapeHTML(splitObj.day)}</span>` : ""}
-                    ${pr ? `<span class="pr-badge" title="${escapeHTML(prDiff)}">★ PR!</span>` : ""}
+                    ${pr ? `<span class="pr-badge" title="${escapeHTML(prDiff)}">NEW PR! 🔥</span>` : ""}
                   </div>
                   <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
                     <span class="font-mono font-bold text-white">${formatMacro(log.weight)} kg</span>
@@ -1801,7 +1995,7 @@
                 ${isToday ? `<span class="rounded-md bg-emerald-400/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-300">Hari ini</span>` : ""}
               </div>
               <div class="flex items-center gap-1.5">
-                ${dayHasPR ? `<span class="pr-badge">★ PR!</span>` : ""}
+                ${dayHasPR ? `<span class="pr-badge">NEW PR! 🔥</span>` : ""}
                 ${splitForDay ? `<span class="rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-[10px] font-semibold text-slate-300">${escapeHTML(splitForDay.day)}</span>` : ""}
               </div>
             </div>
@@ -2413,6 +2607,8 @@
 
   function renderAll() {
     renderDates();
+    renderProfileStatus();
+    populateProfileForms();
     renderWeightCard();
     renderQuickMeals();
     renderNutrition();
@@ -2427,6 +2623,19 @@
     els.todayDates = [...document.querySelectorAll("[data-today-date]")];
     els.navButtons = [...document.querySelectorAll("[data-tab-target]")];
     els.views = [...document.querySelectorAll("[data-view]")];
+
+    els.headerProfileBtn = document.getElementById("header-profile-btn");
+    els.headerNicknameLabel = document.getElementById("header-nickname-label");
+    els.dashUserGreeting = document.getElementById("dash-user-greeting");
+    els.dashGoalBadge = document.getElementById("dash-goal-badge");
+    els.weightProgressTitle = document.getElementById("weight-progress-title");
+    els.dietGoalBadge = document.getElementById("diet-goal-badge");
+
+    els.onboardingModal = document.getElementById("onboarding-modal");
+    els.onboardingForm = document.getElementById("onboarding-form");
+    els.onbCalcBtn = document.getElementById("onb-calc-btn");
+    els.profilePageForm = document.getElementById("profile-page-form");
+    els.profCalcBtn = document.getElementById("prof-calc-btn");
 
     els.openSettings = document.getElementById("open-settings");
     els.settingsModal = document.getElementById("settings-modal");
@@ -2623,9 +2832,9 @@
   }
 
   function populateSettingsForm() {
-    els.settingTargetWeight.value = String(state.profile.targetWeight);
-    els.settingCalorieTarget.value = String(state.profile.calorieTarget);
-    els.settingProteinTarget.value = String(state.profile.proteinTarget);
+    els.settingTargetWeight.value = state.profile.targetWeight > 0 ? String(state.profile.targetWeight) : "";
+    els.settingCalorieTarget.value = state.profile.calorieTarget > 0 ? String(state.profile.calorieTarget) : "";
+    els.settingProteinTarget.value = state.profile.proteinTarget > 0 ? String(state.profile.proteinTarget) : "";
   }
 
   function openSettings() {
@@ -2691,8 +2900,14 @@
       });
     }
 
+    state.profile.currentWeight = round1(weight);
+    if (!state.profile.startWeight || state.profile.startWeight <= 0) {
+      state.profile.startWeight = round1(weight);
+    }
+
     state.weights.sort((a, b) => a.date.localeCompare(b.date));
     persistState();
+    populateProfileForms();
     renderWeightCard();
     renderAnalytics();
     renderDataSummary();
@@ -2733,6 +2948,7 @@
       protein: round1(validProtein),
       createdAt: new Date().toISOString()
     });
+    state.logs = state.foodLogs;
 
     persistState();
     refreshFoodViews();
@@ -2767,6 +2983,7 @@
       state.customMeals.push(entry);
     }
 
+    state.customPresets = state.customMeals;
     return entry;
   }
 
@@ -2775,8 +2992,8 @@
     if (els.templateMealName) els.templateMealName.value = "";
     if (els.templateMealCalories) els.templateMealCalories.value = "";
     if (els.templateMealProtein) els.templateMealProtein.value = "";
-    if (els.mealTemplateFormTitle) els.mealTemplateFormTitle.textContent = "Tambah Template Menu Baru";
-    if (els.mealTemplateSubmitBtn) els.mealTemplateSubmitBtn.textContent = "+ Simpan ke Template Menu";
+    if (els.mealTemplateFormTitle) els.mealTemplateFormTitle.textContent = "Tambah Preset Makanan Baru";
+    if (els.mealTemplateSubmitBtn) els.mealTemplateSubmitBtn.textContent = "+ Simpan ke Preset Favorit";
     if (els.mealTemplateCancelEdit) els.mealTemplateCancelEdit.hidden = true;
   }
 
@@ -2788,7 +3005,7 @@
     const protein = validNumber(els.templateMealProtein?.value, 0, 1000);
 
     if (!name) {
-      showToast("Nama template menu tidak boleh kosong.", "error");
+      showToast("Nama preset makanan tidak boleh kosong.", "error");
       els.templateMealName?.focus();
       return;
     }
@@ -2799,14 +3016,14 @@
 
     const saved = upsertMealTemplate({ id: editId, name, calories, protein });
     if (!saved) {
-      showToast("Gagal menyimpan template menu.", "error");
+      showToast("Gagal menyimpan preset makanan.", "error");
       return;
     }
 
     persistState();
     resetMealTemplateForm();
     refreshFoodViews();
-    showToast(editId ? `Template "${saved.name}" diperbarui.` : `Menu "${saved.name}" ditambahkan ke Template 1-Tap.`);
+    showToast(editId ? `Preset "${saved.name}" diperbarui.` : `"${saved.name}" ditambahkan ke Preset Makanan Favorit.`);
   }
 
   function handleMealTemplateManageClick(event) {
@@ -2820,8 +3037,8 @@
       if (els.templateMealName) els.templateMealName.value = meal.name;
       if (els.templateMealCalories) els.templateMealCalories.value = String(meal.calories);
       if (els.templateMealProtein) els.templateMealProtein.value = String(meal.protein);
-      if (els.mealTemplateFormTitle) els.mealTemplateFormTitle.textContent = "Edit Template Menu";
-      if (els.mealTemplateSubmitBtn) els.mealTemplateSubmitBtn.textContent = "Simpan Perubahan Template";
+      if (els.mealTemplateFormTitle) els.mealTemplateFormTitle.textContent = "Edit Preset Makanan";
+      if (els.mealTemplateSubmitBtn) els.mealTemplateSubmitBtn.textContent = "Simpan Perubahan Preset";
       if (els.mealTemplateCancelEdit) els.mealTemplateCancelEdit.hidden = false;
       els.templateMealName?.focus();
       return;
@@ -2832,23 +3049,25 @@
       const id = deleteBtn.dataset.deleteMealTemplate;
       const meal = getActiveMeals().find((m) => m.id === id);
       if (!meal) return;
-      if (!window.confirm(`Hapus "${meal.name}" dari daftar Template Menu Anda?`)) return;
+      if (!window.confirm(`Hapus "${meal.name}" dari daftar Preset Makanan Favorit Anda?`)) return;
 
       state.customMeals = getActiveMeals().filter((m) => m.id !== id);
+      state.customPresets = state.customMeals;
       if (els.templateMealId?.value === id) resetMealTemplateForm();
       persistState();
       refreshFoodViews();
-      showToast(`Template "${meal.name}" dihapus.`);
+      showToast(`Preset "${meal.name}" dihapus.`);
     }
   }
 
   function handleResetMealTemplates() {
-    if (!window.confirm("Kembalikan daftar Template Menu ke menu default?")) return;
+    if (!window.confirm("Kembalikan daftar Preset Makanan Favorit ke contoh dasar?")) return;
     state.customMeals = cloneDefaultMeals();
+    state.customPresets = state.customMeals;
     resetMealTemplateForm();
     persistState();
     refreshFoodViews();
-    showToast("Template Menu dikembalikan ke default.");
+    showToast("Preset Makanan Favorit dikembalikan ke contoh dasar.");
   }
 
   function handleQuickMealClick(event) {
@@ -3167,13 +3386,24 @@
       return;
     }
 
-    const { threshold } = getExerciseBestBefore(exercise);
-    const isPR = threshold !== null && weight > threshold;
+    const { baseline, bestLogged1RM, threshold } = getExerciseBestBefore(exercise);
     const est1RM = calculateEpley1RM(weight, reps);
+    const prKey = mapExerciseToPRKey(exercise);
+    const isPR = threshold > 0
+      ? (weight > threshold || est1RM > Math.max(baseline, bestLogged1RM))
+      : Boolean(prKey && weight > 0);
     const today = todayKey();
 
     state.selectedSplits[today] = splitId;
     syncPendingBodyNoteText();
+
+    if (isPR && prKey) {
+      if (!state.profile.baselinePRs || typeof state.profile.baselinePRs !== "object") {
+        state.profile.baselinePRs = { ...DEFAULT_BASELINE_PRS };
+      }
+      const nextPRValue = round1(Math.max(weight, est1RM, Number(state.profile.baselinePRs[prKey]) || 0));
+      state.profile.baselinePRs[prKey] = nextPRValue;
+    }
 
     state.workoutLogs.push({
       id: uid(),
@@ -3188,6 +3418,7 @@
       isPR,
       createdAt: new Date().toISOString()
     });
+    state.workouts = state.workoutLogs;
 
     persistState();
     els.workoutWeight.value = "";
@@ -3196,13 +3427,14 @@
       if (els.workoutCustomExerciseWrap) els.workoutCustomExerciseWrap.hidden = true;
       populateExerciseSelect(exercise);
     }
+    populateProfileForms();
     renderSplit();
     renderWorkout();
     renderAnalytics();
     renderDataSummary();
 
     if (isPR) {
-      showToast(`PR BARU! ${exercise} ${formatMacro(weight)} kg · Est. 1RM ${formatWeight(est1RM)} kg`);
+      showToast(`NEW PR! 🔥 ${exercise} ${formatMacro(weight)} kg · Est. 1RM ${formatWeight(est1RM)} kg (PR Profil diperbarui)`);
     } else {
       showToast(`Log ${exercise} (${formatMacro(weight)} kg × ${Math.round(sets)}×${Math.round(reps)}) tersimpan.`);
     }
@@ -3369,6 +3601,268 @@
       showToast("Catatan kondisi fisik dihapus.");
     }
   }
+  function populateProfileFormByPrefix(prefix) {
+    const p = state.profile || DEFAULT_PROFILE;
+    const prs = p.baselinePRs || DEFAULT_BASELINE_PRS;
+    const latestW = getLatestWeightEntry().weight || p.currentWeight || 0;
+
+    const getEl = (suffix) => document.getElementById(`${prefix}-${suffix}`);
+    const setVal = (suffix, val, allowZero = false) => {
+      const el = getEl(suffix);
+      if (!el || document.activeElement === el) return;
+      if (allowZero) {
+        el.value = String(Number(val) || 0);
+      } else {
+        el.value = val !== undefined && val !== null && val !== "" && Number(val) !== 0 ? String(val) : (typeof val === "string" && val ? val : "");
+      }
+    };
+
+    const nickEl = getEl("nickname");
+    if (nickEl && document.activeElement !== nickEl) {
+      nickEl.value = p.nickname || "";
+    }
+    setVal("age", p.age);
+    const genderEl = getEl("gender");
+    if (genderEl && document.activeElement !== genderEl) {
+      genderEl.value = p.gender === "female" ? "female" : "male";
+    }
+    setVal("height", p.heightCm);
+    setVal("current-weight", latestW > 0 ? round1(latestW) : p.currentWeight);
+    setVal("target-weight", p.targetWeight);
+
+    const goalEl = getEl("goal");
+    if (goalEl && document.activeElement !== goalEl) {
+      goalEl.value = p.fitnessGoal || "fat_loss";
+    }
+    const actEl = getEl("activity");
+    if (actEl && document.activeElement !== actEl) {
+      actEl.value = p.activityLevel || "moderate";
+    }
+
+    setVal("calories", p.calorieTarget);
+    setVal("protein", p.proteinTarget);
+
+    setVal("pr-squat", prs.squat, true);
+    setVal("pr-bench", prs.benchPress, true);
+    setVal("pr-deadlift", prs.deadlift, true);
+    setVal("pr-ohp", prs.overheadPress, true);
+    setVal("pr-cj", prs.cleanAndJerk, true);
+    setVal("pr-snatch", prs.snatch, true);
+  }
+
+  function populateProfileForms() {
+    populateProfileFormByPrefix("prof");
+    populateProfileFormByPrefix("onb");
+  }
+
+  function handleAutoCalcByPrefix(prefix) {
+    const getEl = (suffix) => document.getElementById(`${prefix}-${suffix}`);
+    const age = validNumber(getEl("age")?.value, 12, 100);
+    const gender = getEl("gender")?.value === "female" ? "female" : "male";
+    const heightCm = validNumber(getEl("height")?.value, 100, 250);
+    const weightKg = validNumber(getEl("current-weight")?.value, 30, 300);
+    const fitnessGoal = getEl("goal")?.value || "fat_loss";
+    const activityLevel = getEl("activity")?.value || "moderate";
+
+    if (age === null) {
+      showToast("Isi Umur (12–100 tahun) terlebih dahulu.", "error");
+      getEl("age")?.focus();
+      return;
+    }
+    if (heightCm === null) {
+      showToast("Isi Tinggi Badan (100–250 cm) terlebih dahulu.", "error");
+      getEl("height")?.focus();
+      return;
+    }
+    if (weightKg === null) {
+      showToast("Isi Berat Saat Ini (30–300 kg) terlebih dahulu.", "error");
+      getEl("current-weight")?.focus();
+      return;
+    }
+
+    const result = calculateMifflinStJeor({
+      age,
+      gender,
+      heightCm,
+      weightKg,
+      fitnessGoal,
+      activityLevel
+    });
+
+    if (!result) {
+      showToast("Gagal menghitung rekomendasi kalori. Periksa data fisik Anda.", "error");
+      return;
+    }
+
+    const calEl = getEl("calories");
+    const protEl = getEl("protein");
+    if (calEl) calEl.value = String(result.calories);
+    if (protEl) protEl.value = String(result.protein);
+
+    const summaryEl = getEl("calc-summary");
+    if (summaryEl) {
+      const goalNote = fitnessGoal === "fat_loss"
+        ? "Defisit -500 kcal"
+        : fitnessGoal === "muscle_gain"
+          ? "Surplus +300 kcal"
+          : "Maintenance ±0 kcal";
+      summaryEl.textContent = `BMR: ${formatNumber(result.bmr)} kcal · TDEE: ${formatNumber(result.tdee)} kcal (${goalNote}) → Target: ${formatNumber(result.calories)} kcal & ${formatNumber(result.protein)}g protein (2g/kg BB).`;
+      summaryEl.hidden = false;
+    }
+
+    showToast(`Rekomendasi dihitung: ${formatNumber(result.calories)} kcal & ${formatNumber(result.protein)}g protein.`);
+  }
+
+  function handleProfileFormSubmit(prefix, event) {
+    event.preventDefault();
+    const getEl = (suffix) => document.getElementById(`${prefix}-${suffix}`);
+
+    const nickname = (getEl("nickname")?.value || "").trim().slice(0, 50);
+    const age = validNumber(getEl("age")?.value, 12, 100);
+    const gender = getEl("gender")?.value === "female" ? "female" : "male";
+    const heightCm = validNumber(getEl("height")?.value, 100, 250);
+    const currentWeight = validNumber(getEl("current-weight")?.value, 30, 300);
+    const targetWeight = validNumber(getEl("target-weight")?.value, 30, 300);
+    const fitnessGoal = ["fat_loss", "maintenance", "muscle_gain"].includes(getEl("goal")?.value)
+      ? getEl("goal").value
+      : "fat_loss";
+    const activityLevel = Object.prototype.hasOwnProperty.call(ACTIVITY_MULTIPLIERS, getEl("activity")?.value)
+      ? getEl("activity").value
+      : "moderate";
+
+    if (!nickname) {
+      showToast("Nama panggilan wajib diisi.", "error");
+      getEl("nickname")?.focus();
+      return;
+    }
+    if (age === null) {
+      showToast("Masukkan umur yang valid (12–100 tahun).", "error");
+      getEl("age")?.focus();
+      return;
+    }
+    if (heightCm === null) {
+      showToast("Masukkan tinggi badan yang valid (100–250 cm).", "error");
+      getEl("height")?.focus();
+      return;
+    }
+    if (currentWeight === null) {
+      showToast("Masukkan berat badan saat ini yang valid (30–300 kg).", "error");
+      getEl("current-weight")?.focus();
+      return;
+    }
+    if (targetWeight === null) {
+      showToast("Masukkan target berat badan yang valid (30–300 kg).", "error");
+      getEl("target-weight")?.focus();
+      return;
+    }
+
+    let calorieTarget = validNumber(getEl("calories")?.value, 800, 10000);
+    let proteinTarget = validNumber(getEl("protein")?.value, 30, 500);
+
+    if (calorieTarget === null || proteinTarget === null) {
+      const autoCalc = calculateMifflinStJeor({
+        age,
+        gender,
+        heightCm,
+        weightKg: currentWeight,
+        fitnessGoal,
+        activityLevel
+      });
+      if (calorieTarget === null && autoCalc) calorieTarget = autoCalc.calories;
+      if (proteinTarget === null && autoCalc) proteinTarget = autoCalc.protein;
+    }
+
+    if (calorieTarget === null || proteinTarget === null) {
+      showToast("Masukkan target kalori (800–10000 kcal) dan protein (30–500 g) yang valid.", "error");
+      getEl("calories")?.focus();
+      return;
+    }
+
+    const squat = validNumber(getEl("pr-squat")?.value, 0, 600) ?? 0;
+    const benchPress = validNumber(getEl("pr-bench")?.value, 0, 600) ?? 0;
+    const deadlift = validNumber(getEl("pr-deadlift")?.value, 0, 600) ?? 0;
+    const overheadPress = validNumber(getEl("pr-ohp")?.value, 0, 600) ?? 0;
+    const cleanAndJerk = validNumber(getEl("pr-cj")?.value, 0, 600) ?? 0;
+    const snatch = validNumber(getEl("pr-snatch")?.value, 0, 600) ?? 0;
+
+    const wasOnboarded = Boolean(state.profile.isOnboarded);
+    const nextStartWeight = !wasOnboarded || !state.profile.startWeight || state.weights.length === 0
+      ? round1(currentWeight)
+      : round1(state.profile.startWeight);
+
+    state.profile = {
+      ...state.profile,
+      isOnboarded: true,
+      nickname,
+      age: Math.round(age),
+      gender,
+      heightCm: round1(heightCm),
+      currentWeight: round1(currentWeight),
+      startWeight: nextStartWeight,
+      targetWeight: round1(targetWeight),
+      fitnessGoal,
+      activityLevel,
+      calorieTarget: Math.round(calorieTarget),
+      proteinTarget: round1(proteinTarget),
+      baselinePRs: {
+        ...(state.profile.baselinePRs || DEFAULT_BASELINE_PRS),
+        squat: round1(squat),
+        benchPress: round1(benchPress),
+        deadlift: round1(deadlift),
+        overheadPress: round1(overheadPress),
+        cleanAndJerk: round1(cleanAndJerk),
+        snatch: round1(snatch)
+      }
+    };
+
+    const key = todayKey();
+    const now = new Date().toISOString();
+    const existingWeight = state.weights.find((entry) => entry.date === key);
+    if (existingWeight) {
+      existingWeight.weight = round1(currentWeight);
+      existingWeight.updatedAt = now;
+    } else {
+      state.weights.push({
+        date: key,
+        weight: round1(currentWeight),
+        updatedAt: now
+      });
+    }
+    state.weights.sort((a, b) => a.date.localeCompare(b.date));
+
+    if (els.onboardingModal) {
+      els.onboardingModal.hidden = true;
+    }
+    if (els.settingsModal?.hidden !== false) {
+      document.body.classList.remove("modal-open");
+    }
+
+    persistState();
+    scheduleCloudSync(true);
+    renderAll();
+    populateSettingsForm();
+    showToast(
+      prefix === "onb"
+        ? `Selamat datang, ${nickname}! Profil & baseline Anda tersimpan di Cloud.`
+        : `Profil ${nickname} berhasil diperbarui & disinkronkan ke Cloud.`
+    );
+  }
+
+  function checkOnboardingGate() {
+    if (!els.onboardingModal) return;
+    if (currentUser && !state.profile.isOnboarded) {
+      populateProfileForms();
+      els.onboardingModal.hidden = false;
+      document.body.classList.add("modal-open");
+      window.setTimeout(() => document.getElementById("onb-nickname")?.focus(), 60);
+    } else {
+      els.onboardingModal.hidden = true;
+      if (els.settingsModal?.hidden !== false) {
+        document.body.classList.remove("modal-open");
+      }
+    }
+  }
+
   function handleSettingsSubmit(event) {
     event.preventDefault();
     const targetWeight = validNumber(els.settingTargetWeight.value, 30, 300);
@@ -3590,8 +4084,8 @@
         populateSettingsForm();
         setSyncStatus("idle", "Cloud Synced");
       } else {
-        // User baru di cloud: gunakan struktur data lokal/default lalu UPSERT ke Supabase
-        state = loadState();
+        // User baru di cloud: inisialisasi state kosong bersih lalu UPSERT ke Supabase
+        state = createDefaultState();
         currentDay = todayKey();
         persistState({ sync: false });
         renderAll();
@@ -3618,6 +4112,7 @@
       showToast("Data lokal dimuat (gagal terhubung ke tabel cloud).", "error");
     } finally {
       isHydratingFromCloud = false;
+      checkOnboardingGate();
     }
   }
 
@@ -3728,6 +4223,8 @@
 
     state = createDefaultState();
     currentDay = todayKey();
+    if (els.onboardingModal) els.onboardingModal.hidden = true;
+    document.body.classList.remove("modal-open");
     renderAll();
     populateSettingsForm();
 
@@ -3796,6 +4293,11 @@
       setAuthMode(authMode === "login" ? "register" : "login");
     });
     els.logoutBtn?.addEventListener("click", handleLogout);
+
+    els.profCalcBtn?.addEventListener("click", () => handleAutoCalcByPrefix("prof"));
+    els.onbCalcBtn?.addEventListener("click", () => handleAutoCalcByPrefix("onb"));
+    els.profilePageForm?.addEventListener("submit", (event) => handleProfileFormSubmit("prof", event));
+    els.onboardingForm?.addEventListener("submit", (event) => handleProfileFormSubmit("onb", event));
 
     window.addEventListener("online", () => {
       if (currentUser) scheduleCloudSync(true);
