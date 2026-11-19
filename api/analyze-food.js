@@ -2,48 +2,44 @@
  * Vercel Serverless Function: /api/analyze-food
  * Menghitung estimasi kalori & makronutrisi makanan (teks dan/atau foto)
  * menggunakan Groq API sebagai mesin utama dan Google Gemini API
- * (gemini-3.8-flash -> gemini-3.8-flash-lite) sebagai fallback cadangan.
+ * (gemini-3.8-flash) sebagai fallback cadangan.
  */
 
 const GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
 
 const GROQ_TEXT_MODELS = [
-  "openai/gpt-oss-120b",
-  "llama-3.1-8b-instant",
-  "meta-llama/llama-4-scout-17b-16e-instruct"
+  "openai/gpt-oss-120b"
 ];
 
 const GROQ_VISION_MODELS = [
-  "meta-llama/llama-4-scout-17b-16e-instruct",
   "meta-llama/llama-4-maverick-17b-128e-instruct"
 ];
 
 const GEMINI_FALLBACK_MODELS = [
-  "gemini-3.8-flash",
-  "gemini-3.8-flash-lite"
+  "gemini-3.8-flash"
 ];
 
-function cleanAndParseJson(rawText) {
+function safeParseJsonFromText(rawText) {
   if (!rawText || typeof rawText !== "string") {
     throw new Error("Response AI kosong.");
   }
 
+  // 1. Bersihkan blok kode markdown (```json dan ```)
   const cleaned = rawText
-    .replace(/^```json\s*/i, "")
-    .replace(/^```\s*/i, "")
-    .replace(/\s*```$/i, "")
+    .replace(/```json/gi, "")
+    .replace(/```/g, "")
     .trim();
 
-  try {
-    return JSON.parse(cleaned);
-  } catch {
-    const firstBrace = cleaned.indexOf("{");
-    const lastBrace = cleaned.lastIndexOf("}");
-    if (firstBrace !== -1 && lastBrace > firstBrace) {
-      return JSON.parse(cleaned.slice(firstBrace, lastBrace + 1));
-    }
-    throw new Error("Format JSON hasil analisis AI tidak valid.");
+  // 2. Ekstrak substring dari kurung kurawal pertama '{' sampai kurung kurawal terakhir '}'
+  const firstBrace = cleaned.indexOf("{");
+  const lastBrace = cleaned.lastIndexOf("}");
+
+  if (firstBrace === -1 || lastBrace === -1 || lastBrace < firstBrace) {
+    throw new Error("Tidak ditemukan objek JSON ({...}) pada hasil analisis AI.");
   }
+
+  const jsonSubstring = cleaned.slice(firstBrace, lastBrace + 1);
+  return JSON.parse(jsonSubstring);
 }
 
 function normalizeFoodResult(parsed, fallbackName, modelUsed) {
@@ -82,6 +78,7 @@ async function callGroqApi({ apiKey, systemPrompt, promptInstruction, cleanBase6
           ]
         : promptInstruction;
 
+      // Tanpa response_format: { type: "json_object" } agar tidak memicu "Failed to validate JSON" di openai/gpt-oss-120b
       const payload = {
         model,
         messages: [
@@ -95,8 +92,7 @@ async function callGroqApi({ apiKey, systemPrompt, promptInstruction, cleanBase6
           }
         ],
         temperature: 0.2,
-        max_completion_tokens: 512,
-        response_format: { type: "json_object" }
+        max_completion_tokens: 512
       };
 
       const response = await fetch(GROQ_ENDPOINT, {
@@ -113,16 +109,11 @@ async function callGroqApi({ apiKey, systemPrompt, promptInstruction, cleanBase6
       if (!response.ok) {
         const errMsg = data?.error?.message || `Groq HTTP ${response.status}`;
         modelErrors.push(`[${model}] ${errMsg}`);
-
-        // Jika model mengembalikan "does not exist" atau error lainnya, langsung lanjut ke model berikutnya tanpa menunggu
-        if (errMsg.toLowerCase().includes("does not exist")) {
-          continue;
-        }
         continue;
       }
 
       const rawText = data?.choices?.[0]?.message?.content?.trim();
-      const parsed = cleanAndParseJson(rawText);
+      const parsed = safeParseJsonFromText(rawText);
       return { parsed, modelUsed: model };
     } catch (err) {
       modelErrors.push(`[${model}] ${err?.message || String(err)}`);
@@ -200,7 +191,7 @@ async function callGeminiFallback({ apiKey, systemPrompt, promptInstruction, cle
           .join("")
           .trim();
 
-        const parsed = cleanAndParseJson(rawText);
+        const parsed = safeParseJsonFromText(rawText);
         return { parsed, modelUsed: modelName };
       }
 
@@ -212,7 +203,7 @@ async function callGeminiFallback({ apiKey, systemPrompt, promptInstruction, cle
     }
   }
 
-  const error = new Error(geminiErrors.join(" ; ") || "Semua model Gemini fallback gagal.");
+  const error = new Error(geminiErrors.join(" ; ") || "Model Gemini fallback gagal.");
   error.status = lastStatus;
   throw error;
 }
@@ -264,16 +255,16 @@ module.exports = async function handler(req, res) {
       "Anda adalah ahli gizi olahraga (sports nutritionist) Indonesia yang berpengalaman menghitung kalori dan makronutrisi untuk atlet gym, powerbuilding, fat loss, dan bulking.",
       "Analisis deskripsi makanan dan/atau foto makanan yang diberikan oleh pengguna.",
       "Gunakan acuan porsi umum kuliner Indonesia maupun makanan sehari-hari jika berat gram tidak disebutkan secara spesifik.",
-      "Anda WAJIB mengembalikan response murni dalam format JSON object valid tanpa markdown atau teks tambahan dengan struktur persis berikut:",
-      '{ "foodName": "Nama ringkas menu", "calories": 0, "protein": 0, "carbs": 0, "fat": 0, "notes": "Penjelasan singkat estimasi porsi" }',
+      "WAJIB kembalikan HANYA raw JSON object yang valid tanpa teks tambahan atau markdown.",
+      'Gunakan struktur JSON persis berikut: { "foodName": "Nama ringkas menu", "calories": 0, "protein": 0, "carbs": 0, "fat": 0, "notes": "Penjelasan singkat estimasi porsi" }',
       "Pastikan nilai calories, protein, carbs, dan fat berupa angka bulat (integer)."
     ].join(" ");
 
     const promptInstruction = textPrompt
-      ? `Analisis kandungan gizi makanan berikut dalam format JSON: "${textPrompt}". ${
+      ? `Analisis kandungan gizi makanan berikut dan WAJIB kembalikan HANYA raw JSON object yang valid tanpa teks tambahan atau markdown: "${textPrompt}". ${
           cleanBase64 ? "Cocokkan juga dengan foto makanan yang dilampirkan." : ""
         }`
-      : "Analisis foto makanan ini dalam format JSON, kenali jenis menu dan perkiraan porsinya, lalu hitung estimasi kalori (calories), protein, karbohidrat (carbs), dan lemaknya (fat).";
+      : "Analisis foto makanan ini, kenali jenis menu dan perkiraan porsinya, lalu hitung estimasi kalori (calories), protein, karbohidrat (carbs), dan lemaknya (fat). WAJIB kembalikan HANYA raw JSON object yang valid tanpa teks tambahan atau markdown.";
 
     let groqErrorReason = "";
 
@@ -299,7 +290,7 @@ module.exports = async function handler(req, res) {
       console.warn(groqErrorReason);
     }
 
-    // 2. FALLBACK CADANGAN: Gemini API (gemini-3.8-flash -> gemini-3.8-flash-lite)
+    // 2. FALLBACK CADANGAN: Gemini API (gemini-3.8-flash)
     if (geminiApiKey) {
       try {
         const { parsed, modelUsed } = await callGeminiFallback({
