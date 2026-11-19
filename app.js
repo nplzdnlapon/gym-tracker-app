@@ -3135,7 +3135,7 @@
     showToast(`+${meal.name} · ${formatNumber(meal.calories)} kcal, ${formatMacro(meal.protein)} g protein`);
   }
 
-  function compressFoodImage(file, maxWidth = 800, quality = 0.7) {
+  function compressFoodImage(file, maxWidth = 512, quality = 0.6) {
     return new Promise((resolve, reject) => {
       if (!file || !file.type.startsWith("image/")) {
         reject(new Error("Pilih file gambar yang valid (JPG, PNG, atau WEBP)."));
@@ -3148,8 +3148,8 @@
         const img = new Image();
         img.onerror = () => reject(new Error("Format gambar tidak dapat dimuat."));
         img.onload = () => {
-          let width = img.naturalWidth || img.width || 800;
-          let height = img.naturalHeight || img.height || 600;
+          let width = img.naturalWidth || img.width || 512;
+          let height = img.naturalHeight || img.height || 384;
 
           if (width > maxWidth) {
             height = Math.round((height * maxWidth) / width);
@@ -3203,7 +3203,7 @@
     if (!file) return;
 
     try {
-      const compressed = await compressFoodImage(file, 800, 0.7);
+      const compressed = await compressFoodImage(file, 512, 0.6);
       aiCompressedImageBase64 = compressed.base64;
       aiCompressedMimeType = compressed.mimeType;
 
@@ -3211,7 +3211,7 @@
         els.aiImagePreview.src = compressed.dataUrl;
       }
       if (els.aiImageMeta) {
-        els.aiImageMeta.textContent = `${compressed.width}×${compressed.height}px · ~${compressed.approxKb} KB (JPEG 0.7)`;
+        els.aiImageMeta.textContent = `${compressed.width}×${compressed.height}px · ~${compressed.approxKb} KB (JPEG 0.6)`;
       }
       if (els.aiImagePreviewWrap) {
         els.aiImagePreviewWrap.hidden = false;
@@ -3232,7 +3232,7 @@
     if (els.aiAnalyzeSpinner) els.aiAnalyzeSpinner.hidden = !aiAnalyzing;
     if (els.aiAnalyzeLabel) {
       els.aiAnalyzeLabel.textContent = aiAnalyzing
-        ? "Menganalisis dengan Gemini AI..."
+        ? "Menganalisis dengan AI..."
         : "Analisis dengan AI ⚡";
     }
   }
