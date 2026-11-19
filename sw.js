@@ -1,5 +1,5 @@
 /* PowerBuild Tracker service worker: app shell + offline fallback. */
-const CACHE_NAME = "powerbuild-shell-v2.6.0";
+const CACHE_NAME = "powerbuild-shell-v2.7.0";
 
 const APP_SHELL = [
   "./",

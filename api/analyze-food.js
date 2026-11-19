@@ -1,7 +1,8 @@
 /**
  * Vercel Serverless Function: /api/analyze-food
  * Menghitung estimasi kalori & makronutrisi makanan (teks dan/atau foto)
- * menggunakan Google Gemini API dengan mekanisme Auto-Retry (1.5s) & Fallback Model.
+ * menggunakan Google Gemini API terbaru (gemini-3.8-flash & gemini-3.8-flash-lite)
+ * dengan mekanisme Auto-Retry (1.5s) & Fallback Model.
  */
 
 const GEMINI_MODELS = [
@@ -180,22 +181,19 @@ module.exports = async function handler(req, res) {
           break;
         }
 
-        const retryErrMsg = geminiData?.error?.message || "";
         lastErrorStatus = geminiResponse.status;
-        lastErrorMessage = retryErrMsg;
-
-        // Jika masih gagal (503 / 429), lanjut fallback ke model berikutnya di dalam array
+        lastErrorMessage = geminiData?.error?.message || errMsg;
         continue;
       }
 
-      // Jika model tidak ditemukan / belum tersedia di tier project (404), langsung fallback ke model cadangan berikutnya
+      // Jika model belum tersedia di tier project (404), lanjut fallback ke model terbaru berikutnya
       if (geminiResponse.status === 404 && i < GEMINI_MODELS.length - 1) {
         lastErrorStatus = geminiResponse.status;
         lastErrorMessage = errMsg;
         continue;
       }
 
-      // Error lain (mis. 400 Bad Request / 403 Invalid API Key): hentikan loop
+      // Error lain (mis. API Key tidak valid): hentikan loop
       lastErrorStatus = geminiResponse.status;
       lastErrorMessage = errMsg;
       break;

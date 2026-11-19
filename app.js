@@ -3287,6 +3287,11 @@
       if (els.aiResNotes) els.aiResNotes.textContent = notes;
       if (els.aiResultCard) els.aiResultCard.hidden = false;
 
+      const modelBadge = document.getElementById("ai-model-badge");
+      if (modelBadge && data.modelUsed) {
+        modelBadge.textContent = String(data.modelUsed).replace(/-/g, " ").toUpperCase();
+      }
+
       // Auto-fill ke form Custom Food Input di bawahnya agar user bisa cek/koreksi sebelum klik Tambah ke Log Hari Ini
       if (els.foodName) els.foodName.value = foodName;
       if (els.foodCalories) els.foodCalories.value = String(calories);
