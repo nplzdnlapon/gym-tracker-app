@@ -1,8 +1,54 @@
 /**
  * Vercel Serverless Function: /api/analyze-food
  * Menghitung estimasi kalori & makronutrisi makanan (teks dan/atau foto)
- * menggunakan Google Gemini API (gemini-3.8-flash).
+ * menggunakan Google Gemini API dengan mekanisme Auto-Retry (1.5s) & Fallback Model.
  */
+
+const GEMINI_MODELS = [
+  "gemini-3.8-flash",
+  "gemini-3.8-flash-lite",
+  "gemini-2.5-flash",
+  "gemini-2.5-flash-lite"
+];
+
+const RETRY_DELAY_MS = 1500;
+const BUSY_ERROR_MESSAGE =
+  "Server AI sedang sangat sibuk, silakan coba klik analisis lagi dalam beberapa detik.";
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isHighDemandStatus(status, errText = "") {
+  if (status === 503 || status === 429 || status === 502 || status === 504) {
+    return true;
+  }
+  const lower = String(errText || "").toLowerCase();
+  return (
+    lower.includes("high demand") ||
+    lower.includes("overloaded") ||
+    lower.includes("resource_exhausted") ||
+    lower.includes("too many requests") ||
+    lower.includes("unavailable")
+  );
+}
+
+async function callGeminiModel(modelName, apiKey, requestPayload) {
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
+    modelName
+  )}:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(requestPayload)
+  });
+
+  const data = await response.json().catch(() => null);
+  return { response, data };
+}
 
 module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -68,47 +114,102 @@ module.exports = async function handler(req, res) {
 
     userParts.push({ text: promptInstruction });
 
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
-
-    const geminiResponse = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
+    const requestPayload = {
+      systemInstruction: {
+        parts: [{ text: systemPrompt }]
       },
-      body: JSON.stringify({
-        systemInstruction: {
-          parts: [{ text: systemPrompt }]
-        },
-        contents: [
-          {
-            role: "user",
-            parts: userParts
-          }
-        ],
-        generationConfig: {
-          temperature: 0.2,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: "OBJECT",
-            properties: {
-              foodName: { type: "STRING" },
-              calories: { type: "INTEGER" },
-              protein: { type: "INTEGER" },
-              carbs: { type: "INTEGER" },
-              fat: { type: "INTEGER" },
-              notes: { type: "STRING" }
-            },
-            required: ["foodName", "calories", "protein", "carbs", "fat", "notes"]
-          }
+      contents: [
+        {
+          role: "user",
+          parts: userParts
         }
-      })
-    });
+      ],
+      generationConfig: {
+        temperature: 0.2,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "OBJECT",
+          properties: {
+            foodName: { type: "STRING" },
+            calories: { type: "INTEGER" },
+            protein: { type: "INTEGER" },
+            carbs: { type: "INTEGER" },
+            fat: { type: "INTEGER" },
+            notes: { type: "STRING" }
+          },
+          required: ["foodName", "calories", "protein", "carbs", "fat", "notes"]
+        }
+      }
+    };
 
-    const geminiData = await geminiResponse.json().catch(() => null);
+    let geminiResponse = null;
+    let geminiData = null;
+    let usedModel = GEMINI_MODELS[0];
+    let encounteredBusyError = false;
+    let lastErrorStatus = 503;
+    let lastErrorMessage = "";
 
-    if (!geminiResponse.ok) {
-      const apiErrMsg = geminiData?.error?.message || `Gemini API mengembalikan status ${geminiResponse.status}`;
-      return res.status(geminiResponse.status).json({
+    for (let i = 0; i < GEMINI_MODELS.length; i += 1) {
+      const modelName = GEMINI_MODELS[i];
+      usedModel = modelName;
+
+      // Percobaan pertama pada model saat ini
+      let attempt = await callGeminiModel(modelName, apiKey, requestPayload);
+      geminiResponse = attempt.response;
+      geminiData = attempt.data;
+
+      if (geminiResponse.ok) {
+        break;
+      }
+
+      const errMsg = geminiData?.error?.message || "";
+      const isBusy = isHighDemandStatus(geminiResponse.status, errMsg);
+
+      if (isBusy) {
+        encounteredBusyError = true;
+        lastErrorStatus = geminiResponse.status;
+        lastErrorMessage = errMsg;
+
+        // Auto-retry 1 kali setelah jeda 1.5 detik pada model yang sama
+        await sleep(RETRY_DELAY_MS);
+        attempt = await callGeminiModel(modelName, apiKey, requestPayload);
+        geminiResponse = attempt.response;
+        geminiData = attempt.data;
+
+        if (geminiResponse.ok) {
+          break;
+        }
+
+        const retryErrMsg = geminiData?.error?.message || "";
+        lastErrorStatus = geminiResponse.status;
+        lastErrorMessage = retryErrMsg;
+
+        // Jika masih gagal (503 / 429), lanjut fallback ke model berikutnya di dalam array
+        continue;
+      }
+
+      // Jika model tidak ditemukan / belum tersedia di tier project (404), langsung fallback ke model cadangan berikutnya
+      if (geminiResponse.status === 404 && i < GEMINI_MODELS.length - 1) {
+        lastErrorStatus = geminiResponse.status;
+        lastErrorMessage = errMsg;
+        continue;
+      }
+
+      // Error lain (mis. 400 Bad Request / 403 Invalid API Key): hentikan loop
+      lastErrorStatus = geminiResponse.status;
+      lastErrorMessage = errMsg;
+      break;
+    }
+
+    if (!geminiResponse || !geminiResponse.ok) {
+      if (encounteredBusyError || isHighDemandStatus(lastErrorStatus, lastErrorMessage)) {
+        return res.status(503).json({
+          error: BUSY_ERROR_MESSAGE
+        });
+      }
+
+      const apiErrMsg = lastErrorMessage || `Gemini API mengembalikan status ${lastErrorStatus}`;
+      return res.status(lastErrorStatus || 500).json({
         error: `Gagal menganalisis makanan: ${apiErrMsg}`
       });
     }
@@ -138,7 +239,8 @@ module.exports = async function handler(req, res) {
       protein: Math.max(0, Math.round(Number(parsed.protein) || 0)),
       carbs: Math.max(0, Math.round(Number(parsed.carbs) || 0)),
       fat: Math.max(0, Math.round(Number(parsed.fat) || 0)),
-      notes: String(parsed.notes || "Estimasi porsi standar ahli gizi olahraga.").trim()
+      notes: String(parsed.notes || "Estimasi porsi standar ahli gizi olahraga.").trim(),
+      modelUsed: usedModel
     };
 
     return res.status(200).json(result);
