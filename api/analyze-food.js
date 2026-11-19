@@ -1,18 +1,27 @@
 /**
  * Vercel Serverless Function: /api/analyze-food
  * Menghitung estimasi kalori & makronutrisi makanan (teks dan/atau foto)
- * menggunakan Groq API sebagai mesin utama (Llama 3.3 70B & Llama 4 Scout Vision)
- * dan Google Gemini API (gemini-3.8-flash) sebagai fallback cadangan.
+ * menggunakan Groq API sebagai mesin utama dan Google Gemini API
+ * (gemini-3.8-flash -> gemini-3.8-flash-lite) sebagai fallback cadangan.
  */
 
 const GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
-const GROQ_TEXT_MODEL = "llama-3.3-70b-versatile";
+
+const GROQ_TEXT_MODELS = [
+  "openai/gpt-oss-120b",
+  "llama-3.1-8b-instant",
+  "meta-llama/llama-4-scout-17b-16e-instruct"
+];
+
 const GROQ_VISION_MODELS = [
   "meta-llama/llama-4-scout-17b-16e-instruct",
   "meta-llama/llama-4-maverick-17b-128e-instruct"
 ];
 
-const GEMINI_FALLBACK_MODEL = "gemini-3.8-flash";
+const GEMINI_FALLBACK_MODELS = [
+  "gemini-3.8-flash",
+  "gemini-3.8-flash-lite"
+];
 
 function cleanAndParseJson(rawText) {
   if (!rawText || typeof rawText !== "string") {
@@ -53,11 +62,13 @@ function normalizeFoodResult(parsed, fallbackName, modelUsed) {
 
 async function callGroqApi({ apiKey, systemPrompt, promptInstruction, cleanBase64, mimeType }) {
   const isVision = Boolean(cleanBase64);
-  const candidateModels = isVision ? GROQ_VISION_MODELS : [GROQ_TEXT_MODEL];
+  const candidateModels = isVision ? GROQ_VISION_MODELS : GROQ_TEXT_MODELS;
 
-  let lastError = null;
+  const modelErrors = [];
 
-  for (const model of candidateModels) {
+  for (const rawModel of candidateModels) {
+    const model = String(rawModel).replace(/^\[|\]$/g, "").trim();
+
     try {
       const userContent = isVision
         ? [
@@ -101,7 +112,12 @@ async function callGroqApi({ apiKey, systemPrompt, promptInstruction, cleanBase6
 
       if (!response.ok) {
         const errMsg = data?.error?.message || `Groq HTTP ${response.status}`;
-        lastError = new Error(`[${model}] ${errMsg}`);
+        modelErrors.push(`[${model}] ${errMsg}`);
+
+        // Jika model mengembalikan "does not exist" atau error lainnya, langsung lanjut ke model berikutnya tanpa menunggu
+        if (errMsg.toLowerCase().includes("does not exist")) {
+          continue;
+        }
         continue;
       }
 
@@ -109,11 +125,12 @@ async function callGroqApi({ apiKey, systemPrompt, promptInstruction, cleanBase6
       const parsed = cleanAndParseJson(rawText);
       return { parsed, modelUsed: model };
     } catch (err) {
-      lastError = err;
+      modelErrors.push(`[${model}] ${err?.message || String(err)}`);
+      continue;
     }
   }
 
-  throw lastError || new Error("Groq API gagal memproses permintaan.");
+  throw new Error(modelErrors.join(" ; ") || "Groq API gagal memproses permintaan.");
 }
 
 async function callGeminiFallback({ apiKey, systemPrompt, promptInstruction, cleanBase64, mimeType }) {
@@ -158,35 +175,44 @@ async function callGeminiFallback({ apiKey, systemPrompt, promptInstruction, cle
     }
   };
 
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
-    GEMINI_FALLBACK_MODEL
-  )}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  let lastStatus = 503;
+  const geminiErrors = [];
 
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(requestPayload)
-  });
+  for (const modelName of GEMINI_FALLBACK_MODELS) {
+    try {
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
+        modelName
+      )}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
-  const data = await response.json().catch(() => null);
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(requestPayload)
+      });
 
-  if (response.ok) {
-    const rawText = data?.candidates?.[0]?.content?.parts
-      ?.map((part) => part.text || "")
-      .join("")
-      .trim();
+      const data = await response.json().catch(() => null);
 
-    const parsed = cleanAndParseJson(rawText);
-    return { parsed, modelUsed: GEMINI_FALLBACK_MODEL };
+      if (response.ok) {
+        const rawText = data?.candidates?.[0]?.content?.parts
+          ?.map((part) => part.text || "")
+          .join("")
+          .trim();
+
+        const parsed = cleanAndParseJson(rawText);
+        return { parsed, modelUsed: modelName };
+      }
+
+      lastStatus = response.status;
+      const errMsg = data?.error?.message || `Gemini HTTP ${response.status}`;
+      geminiErrors.push(`[${modelName}] ${errMsg}`);
+    } catch (err) {
+      geminiErrors.push(`[${modelName}] ${err?.message || String(err)}`);
+    }
   }
 
-  const lastStatus = response.status;
-  const lastErrorMsg =
-    data?.error?.message || `Gemini (${GEMINI_FALLBACK_MODEL}) HTTP ${response.status}`;
-
-  const error = new Error(`[${GEMINI_FALLBACK_MODEL}] ${lastErrorMsg}`);
+  const error = new Error(geminiErrors.join(" ; ") || "Semua model Gemini fallback gagal.");
   error.status = lastStatus;
   throw error;
 }
@@ -273,7 +299,7 @@ module.exports = async function handler(req, res) {
       console.warn(groqErrorReason);
     }
 
-    // 2. FALLBACK CADANGAN: Gemini API (gemini-3.8-flash)
+    // 2. FALLBACK CADANGAN: Gemini API (gemini-3.8-flash -> gemini-3.8-flash-lite)
     if (geminiApiKey) {
       try {
         const { parsed, modelUsed } = await callGeminiFallback({
