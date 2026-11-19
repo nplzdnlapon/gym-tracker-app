@@ -2,7 +2,7 @@
  * Vercel Serverless Function: /api/analyze-food
  * Menghitung estimasi kalori & makronutrisi makanan (teks dan/atau foto)
  * menggunakan Groq API sebagai mesin utama (Llama 3.3 70B & Llama 4 Scout Vision)
- * dan Google Gemini API (gemini-3.8-flash-lite) sebagai fallback cadangan.
+ * dan Google Gemini API (gemini-3.8-flash) sebagai fallback cadangan.
  */
 
 const GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
@@ -12,14 +12,7 @@ const GROQ_VISION_MODELS = [
   "meta-llama/llama-4-maverick-17b-128e-instruct"
 ];
 
-const GEMINI_FALLBACK_MODELS = [
-  "gemini-3.8-flash-lite",
-  "gemini-2.5-flash-lite",
-  "gemini-2.5-flash"
-];
-
-const BUSY_ERROR_MESSAGE =
-  "Server AI sedang sangat sibuk, silakan coba klik analisis lagi dalam beberapa detik.";
+const GEMINI_FALLBACK_MODEL = "gemini-3.8-flash";
 
 function cleanAndParseJson(rawText) {
   if (!rawText || typeof rawText !== "string") {
@@ -108,7 +101,7 @@ async function callGroqApi({ apiKey, systemPrompt, promptInstruction, cleanBase6
 
       if (!response.ok) {
         const errMsg = data?.error?.message || `Groq HTTP ${response.status}`;
-        lastError = new Error(errMsg);
+        lastError = new Error(`[${model}] ${errMsg}`);
         continue;
       }
 
@@ -165,46 +158,35 @@ async function callGeminiFallback({ apiKey, systemPrompt, promptInstruction, cle
     }
   };
 
-  let lastStatus = 503;
-  let lastErrorMsg = "";
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
+    GEMINI_FALLBACK_MODEL
+  )}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
-  for (const modelName of GEMINI_FALLBACK_MODELS) {
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
-      modelName
-    )}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(requestPayload)
+  });
 
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(requestPayload)
-    });
+  const data = await response.json().catch(() => null);
 
-    const data = await response.json().catch(() => null);
+  if (response.ok) {
+    const rawText = data?.candidates?.[0]?.content?.parts
+      ?.map((part) => part.text || "")
+      .join("")
+      .trim();
 
-    if (response.ok) {
-      const rawText = data?.candidates?.[0]?.content?.parts
-        ?.map((part) => part.text || "")
-        .join("")
-        .trim();
-
-      const parsed = cleanAndParseJson(rawText);
-      return { parsed, modelUsed: modelName };
-    }
-
-    lastStatus = response.status;
-    lastErrorMsg = data?.error?.message || `Gemini HTTP ${response.status}`;
-
-    // Lanjut ke model fallback Gemini berikutnya jika 404/429/503
-    if (response.status === 404 || response.status === 429 || response.status >= 500) {
-      continue;
-    }
-
-    break;
+    const parsed = cleanAndParseJson(rawText);
+    return { parsed, modelUsed: GEMINI_FALLBACK_MODEL };
   }
 
-  const error = new Error(lastErrorMsg || BUSY_ERROR_MESSAGE);
+  const lastStatus = response.status;
+  const lastErrorMsg =
+    data?.error?.message || `Gemini (${GEMINI_FALLBACK_MODEL}) HTTP ${response.status}`;
+
+  const error = new Error(`[${GEMINI_FALLBACK_MODEL}] ${lastErrorMsg}`);
   error.status = lastStatus;
   throw error;
 }
@@ -224,8 +206,8 @@ module.exports = async function handler(req, res) {
     });
   }
 
-  const groqApiKey = process.env.GROQ_API_KEY;
-  const geminiApiKey = process.env.GEMINI_API_KEY;
+  const groqApiKey = (process.env.GROQ_API_KEY || "").trim();
+  const geminiApiKey = (process.env.GEMINI_API_KEY || "").trim();
 
   if (!groqApiKey && !geminiApiKey) {
     return res.status(500).json({
@@ -267,9 +249,9 @@ module.exports = async function handler(req, res) {
         }`
       : "Analisis foto makanan ini dalam format JSON, kenali jenis menu dan perkiraan porsinya, lalu hitung estimasi kalori (calories), protein, karbohidrat (carbs), dan lemaknya (fat).";
 
-    let groqError = null;
+    let groqErrorReason = "";
 
-    // 1. Mesin Utama: Groq API (Super Cepat)
+    // 1. PRIORITAS UTAMA: Groq API (process.env.GROQ_API_KEY)
     if (groqApiKey) {
       try {
         const { parsed, modelUsed } = await callGroqApi({
@@ -283,12 +265,15 @@ module.exports = async function handler(req, res) {
         const result = normalizeFoodResult(parsed, textPrompt, modelUsed);
         return res.status(200).json(result);
       } catch (err) {
-        groqError = err;
-        console.warn("Groq API gagal/limit, mencoba fallback ke Gemini API:", err?.message || err);
+        groqErrorReason = err?.message || String(err);
+        console.warn("Groq API gagal, mencoba fallback ke Gemini API:", groqErrorReason);
       }
+    } else {
+      groqErrorReason = "GROQ_API_KEY tidak ditemukan / belum diset di Environment Variables Vercel";
+      console.warn(groqErrorReason);
     }
 
-    // 2. Mesin Cadangan (Fallback): Gemini API (gemini-3.8-flash-lite)
+    // 2. FALLBACK CADANGAN: Gemini API (gemini-3.8-flash)
     if (geminiApiKey) {
       try {
         const { parsed, modelUsed } = await callGeminiFallback({
@@ -302,22 +287,18 @@ module.exports = async function handler(req, res) {
         const result = normalizeFoodResult(parsed, textPrompt, modelUsed);
         return res.status(200).json(result);
       } catch (geminiErr) {
-        console.error("Fallback Gemini API juga gagal:", geminiErr?.message || geminiErr);
+        const geminiErrorReason = geminiErr?.message || String(geminiErr);
+        console.error("Fallback Gemini API juga gagal:", geminiErrorReason);
         const status = geminiErr?.status || 503;
         return res.status(status).json({
-          error:
-            status === 429 || status >= 500
-              ? BUSY_ERROR_MESSAGE
-              : `Gagal menganalisis makanan: ${geminiErr?.message || "Server AI tidak merespons."}`
+          error: `Groq gagal (${groqErrorReason}) | Fallback Gemini gagal (${geminiErrorReason})`
         });
       }
     }
 
-    // Jika hanya GROQ_API_KEY yang diset dan gagal tanpa adanya GEMINI_API_KEY
+    // Jika Groq gagal dan GEMINI_API_KEY tidak tersedia
     return res.status(503).json({
-      error: `Gagal menganalisis makanan dengan Groq AI: ${
-        groqError?.message || BUSY_ERROR_MESSAGE
-      }`
+      error: `Groq gagal (${groqErrorReason}) | Fallback Gemini dilewati (GEMINI_API_KEY belum diset di Vercel)`
     });
   } catch (error) {
     console.error("Error di /api/analyze-food:", error);

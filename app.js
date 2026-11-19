@@ -3268,7 +3268,7 @@
       if (!response.ok || !data) {
         throw new Error(
           data?.error ||
-            "Gagal terhubung ke endpoint /api/analyze-food. Pastikan proyek dijalankan di Vercel dengan GEMINI_API_KEY aktif."
+            "Gagal terhubung ke endpoint /api/analyze-food. Pastikan proyek dijalankan di Vercel dengan GROQ_API_KEY / GEMINI_API_KEY aktif."
         );
       }
 
