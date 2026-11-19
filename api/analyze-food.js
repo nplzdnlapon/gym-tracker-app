@@ -92,8 +92,13 @@ async function callGroqApi({ apiKey, systemPrompt, promptInstruction, cleanBase6
           }
         ],
         temperature: 0.2,
-        max_completion_tokens: 512
+        max_completion_tokens: 2048
       };
+
+      // Hanya tambahkan reasoning_effort: "low" untuk model reasoning seperti openai/gpt-oss-120b
+      if (model.includes("gpt-oss")) {
+        payload.reasoning_effort = "low";
+      }
 
       const response = await fetch(GROQ_ENDPOINT, {
         method: "POST",
@@ -112,7 +117,11 @@ async function callGroqApi({ apiKey, systemPrompt, promptInstruction, cleanBase6
         continue;
       }
 
-      const rawText = data?.choices?.[0]?.message?.content?.trim();
+      const msg = data?.choices?.[0]?.message;
+      const contentText = typeof msg?.content === "string" ? msg.content.trim() : "";
+      const reasoningText = typeof msg?.reasoning === "string" ? msg.reasoning.trim() : "";
+      const rawText = contentText || reasoningText;
+
       const parsed = safeParseJsonFromText(rawText);
       return { parsed, modelUsed: model };
     } catch (err) {
