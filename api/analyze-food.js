@@ -1,8 +1,8 @@
 /**
  * Vercel Serverless Function: /api/analyze-food
- * Menghitung estimasi kalori & makronutrisi makanan (teks dan/atau foto)
- * menggunakan Groq API sebagai mesin utama dan Google Gemini API
- * (gemini-3.8-flash) sebagai fallback cadangan.
+ * Menghitung estimasi kalori & makronutrisi makanan (teks dan/atau foto):
+ * - Input HANYA Teks: Groq API (openai/gpt-oss-120b) sebagai utama, fallback ke Gemini (gemini-3.8-flash).
+ * - Input FOTO (imageBase64): Langsung memanggil Gemini (gemini-3.8-flash) dilengkapi fetchWithRetry (503 / 429).
  */
 
 const GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
@@ -11,13 +11,55 @@ const GROQ_TEXT_MODELS = [
   "openai/gpt-oss-120b"
 ];
 
-const GROQ_VISION_MODELS = [
-  "meta-llama/llama-4-maverick-17b-128e-instruct"
-];
-
-const GEMINI_FALLBACK_MODELS = [
+const GEMINI_MODELS = [
   "gemini-3.8-flash"
 ];
+
+const GEMINI_RETRY_DELAYS_MS = [1500, 3000];
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Khusus untuk request ke Gemini API:
+ * Jika mendapat status 503 (High Demand) atau 429 (Rate Limit),
+ * otomatis coba ulang hingga 3 kali (percobaan 1 -> jeda 1.5s -> percobaan 2 -> jeda 3s -> percobaan 3).
+ */
+async function fetchWithRetry(url, options, maxAttempts = 3) {
+  let lastResponse = null;
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      const response = await fetch(url, options);
+      lastResponse = response;
+
+      if (response.status !== 503 && response.status !== 429) {
+        return response;
+      }
+
+      if (attempt < maxAttempts) {
+        const delayMs = GEMINI_RETRY_DELAYS_MS[attempt - 1] || 3000;
+        console.warn(
+          `Gemini API mengembalikan status ${response.status} (percobaan ${attempt}/${maxAttempts}). Mencoba ulang dalam ${delayMs}ms...`
+        );
+        await sleep(delayMs);
+      }
+    } catch (err) {
+      lastError = err;
+      if (attempt < maxAttempts) {
+        const delayMs = GEMINI_RETRY_DELAYS_MS[attempt - 1] || 3000;
+        await sleep(delayMs);
+      }
+    }
+  }
+
+  if (lastResponse) {
+    return lastResponse;
+  }
+  throw lastError || new Error("Gagal menghubungi Gemini API setelah beberapa percobaan.");
+}
 
 function safeParseJsonFromText(rawText) {
   if (!rawText || typeof rawText !== "string") {
@@ -56,29 +98,13 @@ function normalizeFoodResult(parsed, fallbackName, modelUsed) {
   };
 }
 
-async function callGroqApi({ apiKey, systemPrompt, promptInstruction, cleanBase64, mimeType }) {
-  const isVision = Boolean(cleanBase64);
-  const candidateModels = isVision ? GROQ_VISION_MODELS : GROQ_TEXT_MODELS;
-
+async function callGroqTextApi({ apiKey, systemPrompt, promptInstruction }) {
   const modelErrors = [];
 
-  for (const rawModel of candidateModels) {
+  for (const rawModel of GROQ_TEXT_MODELS) {
     const model = String(rawModel).replace(/^\[|\]$/g, "").trim();
 
     try {
-      const userContent = isVision
-        ? [
-            { type: "text", text: promptInstruction },
-            {
-              type: "image_url",
-              image_url: {
-                url: `data:${mimeType};base64,${cleanBase64}`
-              }
-            }
-          ]
-        : promptInstruction;
-
-      // Tanpa response_format: { type: "json_object" } agar tidak memicu "Failed to validate JSON" di openai/gpt-oss-120b
       const payload = {
         model,
         messages: [
@@ -88,14 +114,13 @@ async function callGroqApi({ apiKey, systemPrompt, promptInstruction, cleanBase6
           },
           {
             role: "user",
-            content: userContent
+            content: promptInstruction
           }
         ],
         temperature: 0.2,
         max_completion_tokens: 2048
       };
 
-      // Hanya tambahkan reasoning_effort: "low" untuk model reasoning seperti openai/gpt-oss-120b
       if (model.includes("gpt-oss")) {
         payload.reasoning_effort = "low";
       }
@@ -133,7 +158,7 @@ async function callGroqApi({ apiKey, systemPrompt, promptInstruction, cleanBase6
   throw new Error(modelErrors.join(" ; ") || "Groq API gagal memproses permintaan.");
 }
 
-async function callGeminiFallback({ apiKey, systemPrompt, promptInstruction, cleanBase64, mimeType }) {
+async function callGeminiApi({ apiKey, systemPrompt, promptInstruction, cleanBase64, mimeType }) {
   const userParts = [];
 
   if (cleanBase64) {
@@ -178,19 +203,23 @@ async function callGeminiFallback({ apiKey, systemPrompt, promptInstruction, cle
   let lastStatus = 503;
   const geminiErrors = [];
 
-  for (const modelName of GEMINI_FALLBACK_MODELS) {
+  for (const modelName of GEMINI_MODELS) {
     try {
       const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
         modelName
       )}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
+      const response = await fetchWithRetry(
+        endpoint,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(requestPayload)
         },
-        body: JSON.stringify(requestPayload)
-      });
+        3
+      );
 
       const data = await response.json().catch(() => null);
 
@@ -212,7 +241,7 @@ async function callGeminiFallback({ apiKey, systemPrompt, promptInstruction, cle
     }
   }
 
-  const error = new Error(geminiErrors.join(" ; ") || "Model Gemini fallback gagal.");
+  const error = new Error(geminiErrors.join(" ; ") || "Model Gemini gagal memproses permintaan.");
   error.status = lastStatus;
   throw error;
 }
@@ -253,8 +282,9 @@ module.exports = async function handler(req, res) {
 
     // Bersihkan prefix data URL jika dikirim sebagai data:image/...;base64,...
     const cleanBase64 = rawBase64.includes(",") ? rawBase64.split(",")[1].trim() : rawBase64;
+    const hasImage = Boolean(cleanBase64);
 
-    if (!textPrompt && !cleanBase64) {
+    if (!textPrompt && !hasImage) {
       return res.status(400).json({
         error: "Masukkan deskripsi teks makanan atau unggah foto makanan terlebih dahulu."
       });
@@ -271,17 +301,21 @@ module.exports = async function handler(req, res) {
 
     const promptInstruction = textPrompt
       ? `Analisis kandungan gizi makanan berikut dan WAJIB kembalikan HANYA raw JSON object yang valid tanpa teks tambahan atau markdown: "${textPrompt}". ${
-          cleanBase64 ? "Cocokkan juga dengan foto makanan yang dilampirkan." : ""
+          hasImage ? "Cocokkan juga dengan foto makanan yang dilampirkan." : ""
         }`
       : "Analisis foto makanan ini, kenali jenis menu dan perkiraan porsinya, lalu hitung estimasi kalori (calories), protein, karbohidrat (carbs), dan lemaknya (fat). WAJIB kembalikan HANYA raw JSON object yang valid tanpa teks tambahan atau markdown.";
 
-    let groqErrorReason = "";
+    // JALUR 1: Input berisi FOTO (imageBase64 ada) -> Langsung panggil Gemini (gemini-3.8-flash) tanpa melewati Groq
+    if (hasImage) {
+      if (!geminiApiKey) {
+        return res.status(500).json({
+          error: "Analisis foto makanan membutuhkan GEMINI_API_KEY di Environment Variables Vercel."
+        });
+      }
 
-    // 1. PRIORITAS UTAMA: Groq API (process.env.GROQ_API_KEY)
-    if (groqApiKey) {
       try {
-        const { parsed, modelUsed } = await callGroqApi({
-          apiKey: groqApiKey,
+        const { parsed, modelUsed } = await callGeminiApi({
+          apiKey: geminiApiKey,
           systemPrompt,
           promptInstruction,
           cleanBase64,
@@ -290,23 +324,45 @@ module.exports = async function handler(req, res) {
 
         const result = normalizeFoodResult(parsed, textPrompt, modelUsed);
         return res.status(200).json(result);
+      } catch (geminiErr) {
+        const geminiErrorReason = geminiErr?.message || String(geminiErr);
+        console.error("Analisis foto Gemini API gagal setelah retry:", geminiErrorReason);
+        const status = geminiErr?.status || 503;
+        return res.status(status).json({
+          error: `Analisis foto dengan Gemini gagal setelah 3x percobaan (${geminiErrorReason})`
+        });
+      }
+    }
+
+    // JALUR 2: Input HANYA Teks (tanpa imageBase64) -> Groq (openai/gpt-oss-120b) sebagai utama, fallback ke Gemini (gemini-3.8-flash)
+    let groqErrorReason = "";
+
+    if (groqApiKey) {
+      try {
+        const { parsed, modelUsed } = await callGroqTextApi({
+          apiKey: groqApiKey,
+          systemPrompt,
+          promptInstruction
+        });
+
+        const result = normalizeFoodResult(parsed, textPrompt, modelUsed);
+        return res.status(200).json(result);
       } catch (err) {
         groqErrorReason = err?.message || String(err);
-        console.warn("Groq API gagal, mencoba fallback ke Gemini API:", groqErrorReason);
+        console.warn("Groq API teks gagal, mencoba fallback ke Gemini API:", groqErrorReason);
       }
     } else {
       groqErrorReason = "GROQ_API_KEY tidak ditemukan / belum diset di Environment Variables Vercel";
       console.warn(groqErrorReason);
     }
 
-    // 2. FALLBACK CADANGAN: Gemini API (gemini-3.8-flash)
     if (geminiApiKey) {
       try {
-        const { parsed, modelUsed } = await callGeminiFallback({
+        const { parsed, modelUsed } = await callGeminiApi({
           apiKey: geminiApiKey,
           systemPrompt,
           promptInstruction,
-          cleanBase64,
+          cleanBase64: "",
           mimeType
         });
 
@@ -322,7 +378,6 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    // Jika Groq gagal dan GEMINI_API_KEY tidak tersedia
     return res.status(503).json({
       error: `Groq gagal (${groqErrorReason}) | Fallback Gemini dilewati (GEMINI_API_KEY belum diset di Vercel)`
     });
