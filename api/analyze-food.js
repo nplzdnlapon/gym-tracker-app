@@ -1,8 +1,11 @@
 /**
  * Vercel Serverless Function: /api/analyze-food
  * Menghitung estimasi kalori & makronutrisi makanan (teks dan/atau foto):
- * - Input HANYA Teks: Groq API (openai/gpt-oss-120b) sebagai utama, fallback ke Gemini (gemini-3.8-flash).
- * - Input FOTO (imageBase64): Langsung memanggil Gemini (gemini-3.8-flash) dilengkapi fetchWithRetry (503 / 429).
+ * - Input HANYA Teks: Groq API (openai/gpt-oss-120b) sebagai utama, fallback ke array model Gemini.
+ * - Input FOTO (imageBase64): Langsung memanggil array model Gemini secara berurutan
+ *   (['gemini-3.5-flash-lite', 'gemini-4-hydrogen', 'gemini-3.8-flash']).
+ *   Jika salah satu model terkena 429 (Quota/Rate Limit) atau 503 (High Demand),
+ *   langsung pindah (fallback) ke model berikutnya tanpa retry di model yang sama.
  */
 
 const GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
@@ -12,53 +15,28 @@ const GROQ_TEXT_MODELS = [
 ];
 
 const GEMINI_MODELS = [
+  "gemini-3.5-flash-lite",
+  "gemini-4-hydrogen",
   "gemini-3.8-flash"
 ];
 
-const GEMINI_RETRY_DELAYS_MS = [1500, 3000];
+const RATE_LIMIT_FRIENDLY_MESSAGE =
+  "Batas analisis foto per menit tercapai, silakan tunggu sekitar 30 detik lalu coba lagi.";
 
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-/**
- * Khusus untuk request ke Gemini API:
- * Jika mendapat status 503 (High Demand) atau 429 (Rate Limit),
- * otomatis coba ulang hingga 3 kali (percobaan 1 -> jeda 1.5s -> percobaan 2 -> jeda 3s -> percobaan 3).
- */
-async function fetchWithRetry(url, options, maxAttempts = 3) {
-  let lastResponse = null;
-  let lastError = null;
-
-  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    try {
-      const response = await fetch(url, options);
-      lastResponse = response;
-
-      if (response.status !== 503 && response.status !== 429) {
-        return response;
-      }
-
-      if (attempt < maxAttempts) {
-        const delayMs = GEMINI_RETRY_DELAYS_MS[attempt - 1] || 3000;
-        console.warn(
-          `Gemini API mengembalikan status ${response.status} (percobaan ${attempt}/${maxAttempts}). Mencoba ulang dalam ${delayMs}ms...`
-        );
-        await sleep(delayMs);
-      }
-    } catch (err) {
-      lastError = err;
-      if (attempt < maxAttempts) {
-        const delayMs = GEMINI_RETRY_DELAYS_MS[attempt - 1] || 3000;
-        await sleep(delayMs);
-      }
-    }
+function isQuotaOrHighDemandError(status, errMsg = "") {
+  if (status === 429 || status === 503) {
+    return true;
   }
-
-  if (lastResponse) {
-    return lastResponse;
-  }
-  throw lastError || new Error("Gagal menghubungi Gemini API setelah beberapa percobaan.");
+  const lower = String(errMsg || "").toLowerCase();
+  return (
+    lower.includes("quota") ||
+    lower.includes("rate limit") ||
+    lower.includes("resource_exhausted") ||
+    lower.includes("too many requests") ||
+    lower.includes("high demand") ||
+    lower.includes("overloaded") ||
+    lower.includes("unavailable")
+  );
 }
 
 function safeParseJsonFromText(rawText) {
@@ -201,6 +179,7 @@ async function callGeminiApi({ apiKey, systemPrompt, promptInstruction, cleanBas
   };
 
   let lastStatus = 503;
+  let encounteredRateLimit = false;
   const geminiErrors = [];
 
   for (const modelName of GEMINI_MODELS) {
@@ -209,17 +188,14 @@ async function callGeminiApi({ apiKey, systemPrompt, promptInstruction, cleanBas
         modelName
       )}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
-      const response = await fetchWithRetry(
-        endpoint,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(requestPayload)
+      // Panggil sekali per model; jika 429 atau 503 langsung lanjut ke model berikutnya di GEMINI_MODELS
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
         },
-        3
-      );
+        body: JSON.stringify(requestPayload)
+      });
 
       const data = await response.json().catch(() => null);
 
@@ -235,14 +211,27 @@ async function callGeminiApi({ apiKey, systemPrompt, promptInstruction, cleanBas
 
       lastStatus = response.status;
       const errMsg = data?.error?.message || `Gemini HTTP ${response.status}`;
+
+      if (isQuotaOrHighDemandError(response.status, errMsg)) {
+        encounteredRateLimit = true;
+      }
+
       geminiErrors.push(`[${modelName}] ${errMsg}`);
+      continue;
     } catch (err) {
       geminiErrors.push(`[${modelName}] ${err?.message || String(err)}`);
+      continue;
     }
   }
 
-  const error = new Error(geminiErrors.join(" ; ") || "Model Gemini gagal memproses permintaan.");
-  error.status = lastStatus;
+  const error = new Error(
+    encounteredRateLimit
+      ? RATE_LIMIT_FRIENDLY_MESSAGE
+      : geminiErrors.join(" ; ") || "Model Gemini gagal memproses permintaan."
+  );
+  error.status = encounteredRateLimit ? 429 : lastStatus;
+  error.isRateLimit = encounteredRateLimit;
+  error.details = geminiErrors.join(" ; ");
   throw error;
 }
 
@@ -305,7 +294,7 @@ module.exports = async function handler(req, res) {
         }`
       : "Analisis foto makanan ini, kenali jenis menu dan perkiraan porsinya, lalu hitung estimasi kalori (calories), protein, karbohidrat (carbs), dan lemaknya (fat). WAJIB kembalikan HANYA raw JSON object yang valid tanpa teks tambahan atau markdown.";
 
-    // JALUR 1: Input berisi FOTO (imageBase64 ada) -> Langsung panggil Gemini (gemini-3.8-flash) tanpa melewati Groq
+    // JALUR 1: Input berisi FOTO (imageBase64 ada) -> Langsung gunakan urutan model Gemini
     if (hasImage) {
       if (!geminiApiKey) {
         return res.status(500).json({
@@ -325,16 +314,17 @@ module.exports = async function handler(req, res) {
         const result = normalizeFoodResult(parsed, textPrompt, modelUsed);
         return res.status(200).json(result);
       } catch (geminiErr) {
-        const geminiErrorReason = geminiErr?.message || String(geminiErr);
-        console.error("Analisis foto Gemini API gagal setelah retry:", geminiErrorReason);
+        console.error("Semua model Gemini gagal untuk analisis foto:", geminiErr?.details || geminiErr);
         const status = geminiErr?.status || 503;
         return res.status(status).json({
-          error: `Analisis foto dengan Gemini gagal setelah 3x percobaan (${geminiErrorReason})`
+          error: geminiErr?.isRateLimit
+            ? RATE_LIMIT_FRIENDLY_MESSAGE
+            : geminiErr?.message || RATE_LIMIT_FRIENDLY_MESSAGE
         });
       }
     }
 
-    // JALUR 2: Input HANYA Teks (tanpa imageBase64) -> Groq (openai/gpt-oss-120b) sebagai utama, fallback ke Gemini (gemini-3.8-flash)
+    // JALUR 2: Input HANYA Teks (tanpa imageBase64) -> Groq (openai/gpt-oss-120b) utama, fallback ke urutan model Gemini
     let groqErrorReason = "";
 
     if (groqApiKey) {
@@ -369,11 +359,15 @@ module.exports = async function handler(req, res) {
         const result = normalizeFoodResult(parsed, textPrompt, modelUsed);
         return res.status(200).json(result);
       } catch (geminiErr) {
-        const geminiErrorReason = geminiErr?.message || String(geminiErr);
-        console.error("Fallback Gemini API juga gagal:", geminiErrorReason);
+        console.error("Fallback Gemini API juga gagal:", geminiErr?.details || geminiErr);
         const status = geminiErr?.status || 503;
+        if (geminiErr?.isRateLimit) {
+          return res.status(429).json({
+            error: RATE_LIMIT_FRIENDLY_MESSAGE
+          });
+        }
         return res.status(status).json({
-          error: `Groq gagal (${groqErrorReason}) | Fallback Gemini gagal (${geminiErrorReason})`
+          error: `Groq gagal (${groqErrorReason}) | Fallback Gemini gagal (${geminiErr?.details || geminiErr?.message})`
         });
       }
     }
